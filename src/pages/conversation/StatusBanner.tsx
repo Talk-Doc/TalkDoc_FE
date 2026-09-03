@@ -2,8 +2,7 @@ import type { ConversationStep } from '../../types/conversation'
 
 // 상태(step) 값을 사람이 읽을 수 있는 한글 라벨로 바꿔주는 표
 const STEP_LABEL: Record<ConversationStep, string> = {
-  'doctor-question': '의료진 질문 중',
-  'patient-confirm': '환자 답변 대기',
+  question: '의료진 질문 중',
   'sign-camera': '수어 입력 중',
   analyzing: 'AI 분석 중',
   'result-confirm': '답변 확인',

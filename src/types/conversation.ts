@@ -2,8 +2,7 @@
 // 기획 문서의 흐름(의료진 질문 -> 환자 확인 -> 수어 입력 -> AI 분석 -> 결과 확인 -> 의료진 전달)을
 // 그대로 옮긴 것이라, 새 화면이 생기면 여기에 한 줄만 추가하면 됩니다.
 export type ConversationStep =
-  | 'doctor-question' // 의료진이 마이크로 질문 중 / STT 대기
-  | 'patient-confirm' // 환자가 질문 내용을 확인
+  | 'question' // 의료진 질문(녹음) ~ 환자 답변 방법 선택까지, 한 화면에서 진행
   | 'sign-camera' // 환자가 카메라로 수어 답변 입력 중
   | 'analyzing' // AI가 수어를 분석 중 (로딩)
   | 'result-confirm' // 인식된 답변을 환자가 확인

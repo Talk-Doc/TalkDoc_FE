@@ -23,7 +23,7 @@ export default function ResultConfirmStep({
       <div className="flex flex-col gap-2">
         <button
           onClick={onConfirm}
-          className="w-full py-4 rounded-xl bg-blue-500 text-white font-semibold"
+          className="w-full py-4 rounded-xl bg-teal-700 text-white font-semibold"
         >
           의료진에게 전달하기
         </button>

@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* 접근성: 글자 크게 보기 / 고대비 모드
+   PhoneScreen의 data-large-text / data-high-contrast 속성에 따라 화면 전체 톤을 바꿉니다. */
+.a11y-scope[data-large-text] {
+  font-size: 1.2em;
+}
+
+/* 색을 반전시켜 명암비를 크게 높이는 방식입니다. 기존 색 조합을 하나하나 덮어쓰지 않아도
+   모든 화면에 안전하게 적용되고, hue-rotate로 색상 관계(파랑/초록 구분 등)도 유지됩니다. */
+.a11y-scope[data-high-contrast] {
+  filter: invert(1) hue-rotate(180deg);
+}

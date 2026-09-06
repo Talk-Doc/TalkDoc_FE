@@ -11,7 +11,7 @@ export default function AnalyzingStep({
 }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
       <p className="text-slate-500">AI가 답변을 분석하고 있어요</p>
 
       <div className="w-full flex flex-col gap-2 mt-8 pt-8 border-t border-dashed border-slate-200">

@@ -23,9 +23,9 @@ export default function ConversationStepper({ activeIndex }: { activeIndex: numb
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center bg-white border-2 ${
                   state === 'active'
-                    ? 'border-blue-500 text-blue-500'
+                    ? 'border-teal-500 text-teal-500'
                     : state === 'done'
-                      ? 'border-blue-200 text-blue-300'
+                      ? 'border-teal-200 text-teal-300'
                       : 'border-slate-200 text-slate-300'
                 }`}
               >
@@ -33,7 +33,7 @@ export default function ConversationStepper({ activeIndex }: { activeIndex: numb
               </div>
               <span
                 className={`text-[9px] leading-tight text-center ${
-                  state === 'active' ? 'text-blue-600 font-semibold' : 'text-slate-400'
+                  state === 'active' ? 'text-teal-600 font-semibold' : 'text-slate-400'
                 }`}
               >
                 {label}

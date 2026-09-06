@@ -13,13 +13,13 @@ export default function TalkDacLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg'
   return (
     <div className="flex items-center gap-2">
       <div
-        className={`${sizes.icon} rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center shrink-0`}
+        className={`${sizes.icon} rounded-xl bg-gradient-to-br from-teal-500 to-emerald-400 flex items-center justify-center shrink-0`}
       >
         <Hand size={sizes.iconInner} className="text-white" strokeWidth={2.25} />
       </div>
       <span className={`${sizes.text} font-extrabold tracking-tight`}>
         <span className="text-slate-900">TALK</span>
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-400 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-teal-500 to-emerald-400 bg-clip-text text-transparent">
           DAC
         </span>
       </span>

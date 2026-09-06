@@ -22,7 +22,7 @@ export default function TextInputStep({
       <button
         disabled={text.trim().length === 0}
         onClick={() => onSubmit(text.trim())}
-        className="w-full py-4 rounded-xl bg-blue-500 text-white font-semibold disabled:bg-slate-200 disabled:text-slate-400"
+        className="w-full py-4 rounded-xl bg-teal-500 text-white font-semibold disabled:bg-slate-200 disabled:text-slate-400"
       >
         확인
       </button>

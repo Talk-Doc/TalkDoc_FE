@@ -23,7 +23,7 @@ export default function SignCameraStep({
       {!started ? (
         <button
           onClick={() => setStarted(true)}
-          className="w-full py-4 rounded-xl bg-blue-500 text-white font-semibold"
+          className="w-full py-4 rounded-xl bg-teal-500 text-white font-semibold"
         >
           수어 답변 시작
         </button>

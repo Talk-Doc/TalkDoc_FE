@@ -14,15 +14,15 @@ export default function LandingPage() {
       <div className="flex-1 flex flex-col items-center justify-center text-center gap-5">
         <TalkDacLogo size="lg" />
         <p className="text-slate-600 leading-relaxed">
-          듣기 어려운 질문은 <span className="text-blue-500 font-semibold">쉽게</span>,
+          듣기 어려운 질문은 <span className="text-teal-500 font-semibold">쉽게</span>,
           <br />
-          나의 답변은 <span className="text-blue-500 font-semibold">정확하게</span>.
+          나의 답변은 <span className="text-teal-500 font-semibold">정확하게</span>.
         </p>
 
         {/* 일러스트 자리 (임시 아이콘 대체) */}
         <div className="w-full flex items-center justify-center gap-3 py-6">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center">
-            <Stethoscope size={26} className="text-blue-500" />
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <Stethoscope size={26} className="text-teal-500" />
           </div>
           <div className="flex flex-col items-center gap-1 text-slate-300">
             <span className="w-1 h-1 rounded-full bg-current" />
@@ -44,7 +44,7 @@ export default function LandingPage() {
       <div className="flex flex-col items-center gap-3">
         <button
           onClick={() => navigate('/conversation')}
-          className="w-full flex items-center justify-center gap-1.5 py-4 rounded-2xl bg-blue-600 text-white font-semibold shadow-lg shadow-blue-600/20"
+          className="w-full flex items-center justify-center gap-1.5 py-4 rounded-2xl bg-teal-600 text-white font-semibold shadow-lg shadow-teal-600/20"
         >
           대화 시작하기
           <ChevronRight size={18} />

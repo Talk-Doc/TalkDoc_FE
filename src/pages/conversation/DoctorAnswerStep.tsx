@@ -21,7 +21,7 @@ export default function DoctorAnswerStep({
       </div>
       <button
         onClick={onNextQuestion}
-        className="w-full py-4 rounded-xl bg-teal-500 text-white font-semibold"
+        className="w-full py-4 rounded-xl bg-teal-700 text-white font-semibold"
       >
         다음 질문
       </button>

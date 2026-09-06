@@ -17,7 +17,7 @@ export default function RecognitionFailedStep({
       <div className="w-full flex flex-col gap-2 mt-4">
         <button
           onClick={onRetry}
-          className="w-full py-4 rounded-xl bg-teal-500 text-white font-semibold"
+          className="w-full py-4 rounded-xl bg-teal-700 text-white font-semibold"
         >
           다시 시도하기
         </button>

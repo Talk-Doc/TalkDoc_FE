@@ -52,17 +52,17 @@ export default function QuestionAnswerStep({
       {/* 상태 카드 */}
       <div className="rounded-2xl bg-teal-50 p-4 flex items-center justify-between">
         <div>
-          <p className="text-xs text-teal-400 mb-1">현재 상태</p>
+          <p className="text-xs text-teal-700 mb-1">현재 상태</p>
           <p className="font-bold text-teal-900">
             {phase === 'asking' ? '의료진이 질문하는 중입니다' : '환자 답변을 기다리는 중'}
           </p>
-          <p className="text-xs text-teal-400 mt-1">
+          <p className="text-xs text-teal-700 mt-1">
             {phase === 'asking'
               ? '질문이 끝나면 환자에게 휴대폰을 전달해주세요.'
               : '아래에서 답변 방법을 선택해주세요.'}
           </p>
         </div>
-        <Mic size={28} className="text-teal-400 shrink-0" />
+        <Mic size={28} className="text-teal-600 shrink-0" />
       </div>
 
       {/* 의료진 질문 카드 */}

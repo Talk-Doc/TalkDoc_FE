@@ -27,7 +27,7 @@ export default function UtilityToolbar({
           onClick={toggleLargeText}
           aria-pressed={largeText}
           className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-[11px] font-medium ${
-            largeText ? 'bg-teal-500 text-white' : 'bg-slate-50 text-slate-600'
+            largeText ? 'bg-teal-700 text-white' : 'bg-slate-50 text-slate-600'
           }`}
         >
           <CaseSensitive size={17} />
@@ -37,7 +37,7 @@ export default function UtilityToolbar({
           onClick={toggleHighContrast}
           aria-pressed={highContrast}
           className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-[11px] font-medium ${
-            highContrast ? 'bg-teal-500 text-white' : 'bg-slate-50 text-slate-600'
+            highContrast ? 'bg-teal-700 text-white' : 'bg-slate-50 text-slate-600'
           }`}
         >
           <CircleDashed size={17} />

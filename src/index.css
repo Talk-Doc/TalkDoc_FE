@@ -1,13 +1,94 @@
 @import "tailwindcss";
 
-/* 접근성: 글자 크게 보기 / 고대비 모드
-   PhoneScreen의 data-large-text / data-high-contrast 속성에 따라 화면 전체 톤을 바꿉니다. */
-.a11y-scope[data-large-text] {
-  font-size: 1.2em;
+/* 접근성: 글자 크게 보기
+   Tailwind의 텍스트 크기 유틸리티는 rem 단위라 부모(.a11y-scope)의 font-size를 바꿔도
+   자동으로 커지지 않으므로, 실제로 쓰이는 크기 클래스들을 1.2배 값으로 직접 덮어씁니다. */
+.a11y-scope[data-large-text] .text-\[9px\] {
+  font-size: 10.8px !important;
+}
+.a11y-scope[data-large-text] .text-\[11px\] {
+  font-size: 13.2px !important;
+}
+.a11y-scope[data-large-text] .text-xs {
+  font-size: 0.9rem !important;
+}
+.a11y-scope[data-large-text] .text-sm {
+  font-size: 1.05rem !important;
+}
+.a11y-scope[data-large-text] .text-base {
+  font-size: 1.2rem !important;
+}
+.a11y-scope[data-large-text] .text-lg {
+  font-size: 1.35rem !important;
+}
+.a11y-scope[data-large-text] .text-xl {
+  font-size: 1.5rem !important;
+}
+.a11y-scope[data-large-text] .text-2xl {
+  font-size: 1.8rem !important;
+}
+.a11y-scope[data-large-text] .text-4xl {
+  font-size: 2.7rem !important;
 }
 
-/* 색을 반전시켜 명암비를 크게 높이는 방식입니다. 기존 색 조합을 하나하나 덮어쓰지 않아도
-   모든 화면에 안전하게 적용되고, hue-rotate로 색상 관계(파랑/초록 구분 등)도 유지됩니다. */
+/* 접근성: 고대비 모드
+   filter(invert)는 화면 전체를 뒤집기만 해서 명암비가 오히려 기준(4.5:1) 밑으로 떨어지는
+   조합이 생길 수 있어, 검증된 검정 배경 + 흰 글자/테두리 + 노란 강조색 팔레트로 직접 지정합니다. */
 .a11y-scope[data-high-contrast] {
-  filter: invert(1) hue-rotate(180deg);
+  background-color: #000 !important;
+}
+.a11y-scope[data-high-contrast] .bg-white,
+.a11y-scope[data-high-contrast] .bg-slate-50,
+.a11y-scope[data-high-contrast] .bg-slate-100,
+.a11y-scope[data-high-contrast] .bg-slate-200,
+.a11y-scope[data-high-contrast] .bg-slate-900,
+.a11y-scope[data-high-contrast] .bg-teal-50,
+.a11y-scope[data-high-contrast] .bg-emerald-50 {
+  background-color: #000 !important;
+}
+.a11y-scope[data-high-contrast] .bg-teal-400,
+.a11y-scope[data-high-contrast] .bg-teal-700,
+.a11y-scope[data-high-contrast] .bg-emerald-500,
+.a11y-scope[data-high-contrast] .bg-red-500 {
+  background-color: #fde047 !important;
+  color: #000 !important;
+}
+.a11y-scope[data-high-contrast] .bg-teal-400 *,
+.a11y-scope[data-high-contrast] .bg-teal-700 *,
+.a11y-scope[data-high-contrast] .bg-emerald-500 *,
+.a11y-scope[data-high-contrast] .bg-red-500 * {
+  color: #000 !important;
+}
+.a11y-scope[data-high-contrast] .text-slate-300,
+.a11y-scope[data-high-contrast] .text-slate-400,
+.a11y-scope[data-high-contrast] .text-slate-500,
+.a11y-scope[data-high-contrast] .text-slate-600,
+.a11y-scope[data-high-contrast] .text-slate-900,
+.a11y-scope[data-high-contrast] .text-teal-500,
+.a11y-scope[data-high-contrast] .text-teal-600,
+.a11y-scope[data-high-contrast] .text-teal-700,
+.a11y-scope[data-high-contrast] .text-teal-900,
+.a11y-scope[data-high-contrast] .text-emerald-300,
+.a11y-scope[data-high-contrast] .text-emerald-400,
+.a11y-scope[data-high-contrast] .text-emerald-500,
+.a11y-scope[data-high-contrast] .text-emerald-600,
+.a11y-scope[data-high-contrast] .text-emerald-700,
+.a11y-scope[data-high-contrast] .text-emerald-900,
+.a11y-scope[data-high-contrast] .text-red-500 {
+  color: #fff !important;
+}
+.a11y-scope[data-high-contrast] .border-slate-100,
+.a11y-scope[data-high-contrast] .border-slate-200,
+.a11y-scope[data-high-contrast] .border-emerald-200,
+.a11y-scope[data-high-contrast] .border-emerald-500,
+.a11y-scope[data-high-contrast] .border-red-200,
+.a11y-scope[data-high-contrast] .border-teal-400,
+.a11y-scope[data-high-contrast] .border-teal-500,
+.a11y-scope[data-high-contrast] .border-teal-700 {
+  border-color: #fff !important;
+}
+.a11y-scope[data-high-contrast] button:disabled {
+  background-color: #000 !important;
+  color: #888 !important;
+  border-color: #888 !important;
 }

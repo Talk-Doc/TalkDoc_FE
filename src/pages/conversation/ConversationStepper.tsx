@@ -10,7 +10,7 @@ const NODES = [
 ]
 
 // 상단의 6단계 진행 표시줄입니다.
-// activeIndex보다 앞선 단계는 "완료"(연한 색), activeIndex는 "진행 중"(파란색 강조), 뒤는 "아직"(회색)으로 표시합니다.
+// activeIndex보다 앞선 단계는 "완료"(연한 색), activeIndex는 "진행 중"(청록색 강조), 뒤는 "아직"(회색)으로 표시합니다.
 export default function ConversationStepper({ activeIndex }: { activeIndex: number }) {
   return (
     <div className="relative mb-5">
@@ -23,9 +23,9 @@ export default function ConversationStepper({ activeIndex }: { activeIndex: numb
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center bg-white border-2 ${
                   state === 'active'
-                    ? 'border-teal-500 text-teal-500'
+                    ? 'border-teal-700 text-teal-700'
                     : state === 'done'
-                      ? 'border-teal-200 text-teal-300'
+                      ? 'border-teal-400 text-teal-600'
                       : 'border-slate-200 text-slate-300'
                 }`}
               >
@@ -33,7 +33,7 @@ export default function ConversationStepper({ activeIndex }: { activeIndex: numb
               </div>
               <span
                 className={`text-[9px] leading-tight text-center ${
-                  state === 'active' ? 'text-teal-600 font-semibold' : 'text-slate-400'
+                  state === 'active' ? 'text-teal-700 font-semibold' : 'text-slate-400'
                 }`}
               >
                 {label}

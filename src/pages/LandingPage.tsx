@@ -44,7 +44,7 @@ export default function LandingPage() {
       <div className="flex flex-col items-center gap-3">
         <button
           onClick={() => navigate('/conversation')}
-          className="w-full flex items-center justify-center gap-1.5 py-4 rounded-2xl bg-teal-600 text-white font-semibold shadow-lg shadow-teal-600/20"
+          className="w-full flex items-center justify-center gap-1.5 py-4 rounded-2xl bg-teal-700 text-white font-semibold shadow-lg shadow-teal-700/20"
         >
           대화 시작하기
           <ChevronRight size={18} />

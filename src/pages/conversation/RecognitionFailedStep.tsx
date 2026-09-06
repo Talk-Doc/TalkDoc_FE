@@ -1,18 +1,18 @@
 export default function RecognitionFailedStep({
+  reason,
   onRetry,
   onEditAsText,
 }: {
+  reason?: string | null
   onRetry: () => void
   onEditAsText: () => void
 }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
       <span className="text-4xl">⚠️</span>
-      <p className="text-lg font-semibold text-slate-900">
-        수어를 인식하지 못했어요
-      </p>
+      <p className="text-lg font-semibold text-slate-900">수어를 인식하지 못했어요</p>
       <p className="text-sm text-slate-400">
-        조금 더 천천히, 화면 중앙에서 다시 시도해주세요.
+        {reason ?? '조금 더 천천히, 화면 중앙에서 다시 시도해주세요.'}
       </p>
       <div className="w-full flex flex-col gap-2 mt-4">
         <button

@@ -1,33 +1,65 @@
-// TODO(백엔드 연동): 실제로는 여기서 Vision AI 인식 API 응답을 기다렸다가
-// 성공하면 result-confirm, 실패하면 recognition-failed로 넘어가게 됩니다.
-// 지금은 실제 AI가 없으므로, 두 결과를 모두 화면에서 확인해볼 수 있도록
-// 테스트용 버튼 두 개를 임시로 두었습니다. (디자인/AI 연동 전 임시 UI)
+import { useEffect, useRef, useState } from 'react'
+import { useSession } from '../../session/useSession'
+import { talkdocApi } from '../../api/talkdoc'
+import { errorMessage } from '../../api/client'
+
+export interface RecognitionResult {
+  labels: string[]
+  answer: string
+}
+
+// 녹화된 수어 영상을 POST /sign 으로 보내 라벨을 인식하고,
+// 인식된 라벨로 POST /answer/preview 를 호출해 답변 문장을 미리 만들어 옵니다.
+// 인식된 라벨이 하나도 없으면(신뢰도 미달 포함) 실패로 처리합니다.
 export default function AnalyzingStep({
+  video,
   onSuccess,
   onFailure,
 }: {
-  onSuccess: () => void
-  onFailure: () => void
+  video: Blob
+  onSuccess: (result: RecognitionResult) => void
+  onFailure: (reason?: string) => void
 }) {
+  const { session } = useSession()
+  const [status, setStatus] = useState('수어를 인식하고 있어요')
+  const startedRef = useRef(false)
+
+  useEffect(() => {
+    if (!session || startedRef.current) return
+    startedRef.current = true // React StrictMode의 이중 실행으로 두 번 업로드되지 않게 막습니다.
+
+    const run = async () => {
+      try {
+        const sign = await talkdocApi.recognizeSign(session.sessionId, session.patientToken, video)
+        if (sign.accepted_labels.length === 0) {
+          onFailure(
+            sign.signs.length === 0
+              ? '수어를 찾지 못했어요.'
+              : '인식 신뢰도가 낮아요. 조금 더 천천히 다시 해주세요.',
+          )
+          return
+        }
+        setStatus(`인식된 수어: ${sign.accepted_labels.join(', ')} · 문장으로 정리 중`)
+        const preview = await talkdocApi.previewAnswer(
+          session.sessionId,
+          session.patientToken,
+          sign.accepted_labels,
+        )
+        onSuccess({ labels: preview.labels, answer: preview.answer })
+      } catch (e) {
+        onFailure(errorMessage(e))
+      }
+    }
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, video])
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
       <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-500">AI가 답변을 분석하고 있어요</p>
-
-      <div className="w-full flex flex-col gap-2 mt-8 pt-8 border-t border-dashed border-slate-200">
-        <p className="text-xs text-slate-400">임시 테스트 버튼 (AI 연동 전까지 사용)</p>
-        <button
-          onClick={onSuccess}
-          className="w-full py-2 rounded-lg border border-slate-200 text-sm text-slate-600"
-        >
-          (테스트) 인식 성공으로 보기
-        </button>
-        <button
-          onClick={onFailure}
-          className="w-full py-2 rounded-lg border border-slate-200 text-sm text-slate-600"
-        >
-          (테스트) 인식 실패로 보기
-        </button>
+      <div>
+        <p className="text-slate-700 font-medium">AI가 답변을 분석하고 있어요</p>
+        <p className="text-xs text-slate-400 mt-1">{status}</p>
       </div>
     </div>
   )

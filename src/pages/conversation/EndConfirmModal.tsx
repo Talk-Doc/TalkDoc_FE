@@ -1,9 +1,11 @@
 import { MessageCircleX, ShieldAlert, Trash2, MessageCircle } from 'lucide-react'
 
 export default function EndConfirmModal({
+  ending = false,
   onConfirmEnd,
   onCancel,
 }: {
+  ending?: boolean
   onConfirmEnd: () => void
   onCancel: () => void
 }) {
@@ -31,13 +33,15 @@ export default function EndConfirmModal({
         </div>
         <button
           onClick={onConfirmEnd}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-red-500 text-white font-semibold"
+          disabled={ending}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-red-500 text-white font-semibold disabled:bg-red-300"
         >
           <Trash2 size={16} />
-          대화 종료
+          {ending ? '종료하는 중…' : '대화 종료'}
         </button>
         <button
           onClick={onCancel}
+          disabled={ending}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500"
         >
           <MessageCircle size={16} />

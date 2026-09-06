@@ -20,6 +20,41 @@ npm run build   # 배포용으로 빌드 (타입 오류가 있으면 여기서 �
 npm run lint    # 코드 스타일 검사
 ```
 
+## 백엔드와 함께 실행하기
+
+이 프론트는 [TalkDoc_BE](../TalkDoc_BE) 백엔드(Spring Boot, 8080 포트)와 붙어서 동작합니다.
+
+```bash
+# 1) 백엔드 저장소에서: Redis + 백엔드(mock AI 프로필) 실행
+docker compose up -d redis            # 또는 로컬 redis-server
+./gradlew bootRun --args='--spring.profiles.active=local'
+
+# 2) 이 저장소에서
+npm run dev
+```
+
+개발 서버(vite)는 `/api`, `/ws` 요청을 `VITE_DEV_BACKEND_URL`(기본 `http://localhost:8080`)로
+프록시하므로 CORS 설정 없이 바로 붙습니다. 백엔드 주소를 바꾸려면 `.env.example`을 `.env`로
+복사해서 값을 수정하세요. 배포 시 프론트/백엔드 도메인이 다르면 `VITE_API_BASE_URL`을 지정합니다.
+
+마이크/카메라는 `localhost` 또는 HTTPS에서만 열립니다. 권한이 없거나 데스크톱 등에서
+장치를 못 쓰면 화면이 자동으로 텍스트 입력으로 바뀝니다.
+
+### 화면 ↔ API 대응
+
+| 화면 | 백엔드 호출 | 토큰 |
+|---|---|---|
+| 시작 화면 "대화 시작하기" | `POST /api/sessions` | 없음 |
+| 의료진 질문 (녹음 종료 / 텍스트 등록) | `POST /api/sessions/{id}/question` (multipart `audio` 또는 `text`) | 의료진 |
+| 수어 촬영 → AI 분석 | `POST /api/sessions/{id}/sign` (multipart `video`) → `POST .../answer/preview` | 환자 |
+| 답변 확인 "의료진에게 전달하기" | `POST .../answer/confirm` | 환자 |
+| 의료진 답변 화면 "음성으로 듣기" | `GET .../answer/{answerId}/tts` | 의료진 |
+| 대화 종료 | `POST .../summary` → `DELETE /api/sessions/{id}` | 의료진 |
+| 세션 알림 (닫힘 등) | `WS /ws/sessions/{id}?token=` | 의료진 |
+
+세션 생성 시 받은 의료진/환자 토큰은 `sessionStorage`에 보관되며(휴대폰 한 대에서 두 역할이
+번갈아 사용), 요청마다 알맞은 토큰을 `Authorization: Bearer` 헤더로 보냅니다.
+
 ## 폴더 구조
 
 ```
@@ -27,6 +62,13 @@ src/
   main.tsx              앱 진입점 (거의 건드릴 일 없음)
   App.tsx                라우터: 주소(URL)별로 어떤 화면을 보여줄지 정의
   types/conversation.ts  대화 흐름에서 쓰는 타입 정의
+  api/
+    client.ts            fetch 공통 처리 (토큰 헤더, 에러 변환, WebSocket 주소)
+    types.ts             백엔드 응답 타입 (snake_case 그대로)
+    talkdoc.ts           엔드포인트별 호출 함수
+    socket.ts            세션 WebSocket 훅
+  session/               세션(토큰) 보관 컨텍스트와 useSession 훅
+  media/useMediaRecorder.ts  마이크/카메라 녹음·녹화 훅
   components/            여러 화면에서 공통으로 쓰는 조각 (예: PhoneScreen)
   pages/
     LandingPage.tsx       시작 화면 ("/")

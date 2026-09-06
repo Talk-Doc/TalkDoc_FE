@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Square, Hand, Keyboard, ListChecks, ChevronDown, Volume2 } from 'lucide-react'
+import { Mic, Square, Hand, Keyboard, ListChecks, ChevronDown, Volume2, Loader2 } from 'lucide-react'
+import { useMediaRecorder } from '../../media/useMediaRecorder'
+import { useSession } from '../../session/useSession'
+import { talkdocApi } from '../../api/talkdoc'
+import { errorMessage } from '../../api/client'
+import type { QuestionResponse } from '../../api/types'
 
-// TODO(백엔드 연동): 실제로는 녹음 중 오디오를 STT API로 스트리밍하고,
-// [질문 종료]를 누르면 최종 텍스트를 LLM이 다듬어서 questionText로 받게 됩니다.
-const MOCK_QUESTION = '어디가 아파서 오셨어요?'
+// 화면이 열리면 바로 마이크 녹음을 시작하고, [질문 종료]를 누르면 녹음 파일을
+// POST /api/sessions/{id}/question 으로 보내 STT + 의도 분석 결과(질문 텍스트)를 받습니다.
+// 마이크를 못 쓰는 환경(권한 거부, 데스크톱 등)에서는 텍스트로 질문을 입력할 수 있습니다.
 
 // 파형(waveform)은 실제 오디오 분석 없이, 보기용으로 높이가 제각각인 막대를 나열한 것입니다.
 const WAVEFORM_BARS = [6, 14, 22, 10, 18, 26, 12, 20, 8, 16, 24, 10, 14, 20, 8, 18, 12, 22]
@@ -16,36 +21,111 @@ function formatTime(totalSeconds: number) {
   return `${m}:${s}`
 }
 
+type Phase = 'asking' | 'processing' | 'ready'
+
 export default function QuestionAnswerStep({
+  conversationCount,
+  onQuestionReady,
   onAnswerWithSign,
   onAnswerWithText,
   onPhaseChange,
 }: {
-  onAnswerWithSign: (questionText: string) => void
-  onAnswerWithText: (questionText: string) => void
+  conversationCount: number
+  onQuestionReady: (question: QuestionResponse) => void
+  onAnswerWithSign: () => void
+  onAnswerWithText: () => void
   onPhaseChange: (phase: 'asking' | 'ready') => void
 }) {
-  const [phase, setPhase] = useState<'asking' | 'ready'>('asking')
+  const { session } = useSession()
+  const recorder = useMediaRecorder('audio')
+
+  const [phase, setPhase] = useState<Phase>('asking')
+  const [question, setQuestion] = useState<QuestionResponse | null>(null)
+  const [inputMode, setInputMode] = useState<'mic' | 'text'>('mic')
+  const [typedQuestion, setTypedQuestion] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [seconds, setSeconds] = useState(0)
   const [voiceGuide, setVoiceGuide] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = null
+  }
+
+  // 화면이 열리면 마이크를 켜고 녹음을 시작합니다. 실패하면 텍스트 입력으로 전환합니다.
   useEffect(() => {
-    timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+    let cancelled = false
+    recorder
+      .open()
+      .then(() => {
+        if (cancelled) return
+        return recorder.start()
+      })
+      .catch(() => {
+        if (!cancelled) setInputMode('text')
+      })
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      cancelled = true
+      recorder.release()
     }
+    // recorder의 함수들은 모두 useCallback으로 고정되어 있어 마운트 때 한 번만 실행됩니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    onPhaseChange(phase)
+    timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+    return stopTimer
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'processing') onPhaseChange(phase)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
-  const finishQuestion = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    setPhase('ready')
+  const submitQuestion = async (input: { audio?: Blob; text?: string }) => {
+    if (!session) return
+    setError(null)
+    setPhase('processing')
+    try {
+      const q = await talkdocApi.postQuestion(session.sessionId, session.doctorToken, input)
+      setQuestion(q)
+      onQuestionReady(q)
+      setPhase('ready')
+    } catch (e) {
+      setError(errorMessage(e))
+      setPhase('asking')
+      // 음성 인식이 실패한 경우엔 텍스트로 다시 입력할 수 있게 열어둡니다.
+      setInputMode('text')
+    }
   }
+
+  const finishRecording = async () => {
+    stopTimer()
+    let audio: Blob
+    try {
+      audio = await recorder.stop()
+    } catch {
+      setInputMode('text')
+      return
+    } finally {
+      recorder.release()
+    }
+    if (audio.size === 0) {
+      setError('녹음된 소리가 없어요. 텍스트로 질문을 입력해주세요.')
+      setInputMode('text')
+      return
+    }
+    await submitQuestion({ audio })
+  }
+
+  const finishTyped = async () => {
+    stopTimer()
+    recorder.release()
+    await submitQuestion({ text: typedQuestion })
+  }
+
+  const supported = question?.supported ?? false
 
   return (
     <>
@@ -54,21 +134,28 @@ export default function QuestionAnswerStep({
         <div>
           <p className="text-xs text-blue-400 mb-1">현재 상태</p>
           <p className="font-bold text-blue-900">
-            {phase === 'asking' ? '의료진이 질문하는 중입니다' : '환자 답변을 기다리는 중'}
+            {phase === 'asking' && '의료진이 질문하는 중입니다'}
+            {phase === 'processing' && '질문을 정리하는 중입니다'}
+            {phase === 'ready' && '환자 답변을 기다리는 중'}
           </p>
           <p className="text-xs text-blue-400 mt-1">
-            {phase === 'asking'
-              ? '질문이 끝나면 환자에게 휴대폰을 전달해주세요.'
-              : '아래에서 답변 방법을 선택해주세요.'}
+            {phase === 'asking' && '질문이 끝나면 환자에게 휴대폰을 전달해주세요.'}
+            {phase === 'processing' && 'AI가 질문을 텍스트로 바꾸고 있어요.'}
+            {phase === 'ready' && '아래에서 답변 방법을 선택해주세요.'}
           </p>
         </div>
-        <Mic size={28} className="text-blue-400 shrink-0" />
+        {phase === 'processing' ? (
+          <Loader2 size={28} className="text-blue-400 shrink-0 animate-spin" />
+        ) : (
+          <Mic size={28} className="text-blue-400 shrink-0" />
+        )}
       </div>
 
       {/* 의료진 질문 카드 */}
       <div className="rounded-2xl border border-slate-100 p-4">
         <p className="text-xs text-slate-400 mb-2">의료진의 질문</p>
-        {phase === 'asking' ? (
+
+        {phase === 'asking' && inputMode === 'mic' && (
           <>
             <p className="text-lg font-bold text-slate-900 mb-4">듣고 있어요…</p>
             <div className="flex items-end gap-[3px] h-7 mb-2">
@@ -83,19 +170,67 @@ export default function QuestionAnswerStep({
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400">{formatTime(seconds)}</span>
               <button
-                onClick={finishQuestion}
-                className="flex items-center gap-1.5 text-sm font-semibold text-red-500 border border-red-200 rounded-full px-3 py-1.5"
+                onClick={finishRecording}
+                disabled={!recorder.recording}
+                className="flex items-center gap-1.5 text-sm font-semibold text-red-500 border border-red-200 rounded-full px-3 py-1.5 disabled:opacity-40"
               >
                 <Square size={12} fill="currentColor" />
                 질문 종료
               </button>
             </div>
+            <button
+              onClick={() => {
+                stopTimer()
+                recorder.release()
+                setInputMode('text')
+              }}
+              className="mt-3 flex items-center gap-1 text-xs text-slate-400"
+            >
+              <Keyboard size={12} />
+              텍스트로 질문 입력하기
+            </button>
           </>
-        ) : (
-          <p className="text-xl font-bold text-slate-900 leading-relaxed">
-            “{MOCK_QUESTION}”
-          </p>
         )}
+
+        {phase === 'asking' && inputMode === 'text' && (
+          <>
+            {recorder.error && <p className="text-xs text-amber-600 mb-2">{recorder.error}</p>}
+            <textarea
+              value={typedQuestion}
+              onChange={(e) => setTypedQuestion(e.target.value)}
+              placeholder="예: 어디가 아파서 오셨어요?"
+              className="w-full h-20 rounded-xl border border-slate-200 p-3 text-slate-900 resize-none mb-2"
+              autoFocus
+            />
+            <button
+              onClick={finishTyped}
+              disabled={typedQuestion.trim().length === 0}
+              className="w-full py-2.5 rounded-xl bg-blue-500 text-white text-sm font-semibold disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              질문 등록
+            </button>
+          </>
+        )}
+
+        {phase === 'processing' && (
+          <div className="flex items-center gap-2 text-slate-500 py-2">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">음성을 텍스트로 바꾸는 중…</span>
+          </div>
+        )}
+
+        {phase === 'ready' && question && (
+          <>
+            <p className="text-xl font-bold text-slate-900 leading-relaxed">“{question.text}”</p>
+            {!supported && (
+              <p className="text-xs text-amber-600 mt-2">
+                이 질문은 아직 수어 답변을 지원하지 않아요. 텍스트로 답변해주세요.
+              </p>
+            )}
+          </>
+        )}
+
+        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
       </div>
 
       {phase === 'ready' && (
@@ -109,23 +244,20 @@ export default function QuestionAnswerStep({
                 수어 인식 대기 중
               </span>
             </div>
-            <p className="font-bold text-emerald-900 mb-1">
-              질문이 끝나면 수어로 답변해주세요
-            </p>
-            <p className="text-xs text-emerald-600 mb-4">
-              수어가 어려우면 다른 방법을 선택할 수 있어요.
-            </p>
+            <p className="font-bold text-emerald-900 mb-1">질문이 끝나면 수어로 답변해주세요</p>
+            <p className="text-xs text-emerald-600 mb-4">수어가 어려우면 다른 방법을 선택할 수 있어요.</p>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => onAnswerWithSign(MOCK_QUESTION)}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 text-white font-semibold"
+                onClick={onAnswerWithSign}
+                disabled={!supported}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 text-white font-semibold disabled:bg-emerald-200"
               >
                 <Hand size={16} />
                 수어로 답변하기
               </button>
               <div className="flex gap-2">
                 <button
-                  onClick={() => onAnswerWithText(MOCK_QUESTION)}
+                  onClick={onAnswerWithText}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-emerald-200 text-emerald-700 text-sm"
                 >
                   <Keyboard size={14} />
@@ -147,7 +279,7 @@ export default function QuestionAnswerStep({
           <button className="w-full rounded-2xl border border-slate-100 p-4 flex items-center justify-between text-left">
             <div>
               <p className="text-sm font-semibold text-slate-900">대화 요약 (현재까지)</p>
-              <p className="text-xs text-slate-400 mt-0.5">주 증상 확인 중 · 0/6 완료</p>
+              <p className="text-xs text-slate-400 mt-0.5">답변 {conversationCount}개 전달 완료</p>
             </div>
             <ChevronDown size={16} className="text-slate-300 -rotate-90" />
           </button>
@@ -156,10 +288,7 @@ export default function QuestionAnswerStep({
 
       <div className="mt-auto pt-2 flex items-center justify-between text-xs text-slate-400">
         <span>AI가 안전하고 정확하게 도와드려요.</span>
-        <button
-          onClick={() => setVoiceGuide((v) => !v)}
-          className="flex items-center gap-1 shrink-0"
-        >
+        <button onClick={() => setVoiceGuide((v) => !v)} className="flex items-center gap-1 shrink-0">
           <Volume2 size={13} />
           음성 안내 {voiceGuide ? '끄기' : '켜기'}
         </button>

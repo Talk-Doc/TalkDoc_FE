@@ -9,9 +9,3 @@ export type ConversationStep =
   | 'recognition-failed' // 인식 실패
   | 'text-input' // 수어 대신 텍스트로 직접 입력
   | 'doctor-answer' // 의료진에게 최종 답변 표시
-
-export interface QuestionRecord {
-  id: string
-  doctorQuestionText: string // STT + LLM으로 정리된 의료진 질문
-  patientAnswerText: string | null // AI가 수어를 변환한 최종 문장
-}

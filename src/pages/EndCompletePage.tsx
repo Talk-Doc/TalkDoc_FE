@@ -1,9 +1,14 @@
-import { useNavigate } from 'react-router-dom'
-import { Check, Sparkle, Trash2, Home } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Check, Sparkle, Trash2, Home, FileText } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
+import type { SummaryResponse } from '../api/types'
 
+// 종료 직전에 뽑은 진료 요약(POST /summary)을 navigate state로 넘겨받아 보여줍니다.
+// 서버 데이터는 이미 삭제된 뒤라, 새로고침하면 요약도 사라집니다(의도된 동작).
 export default function EndCompletePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const summary = (location.state as { summary?: SummaryResponse | null } | null)?.summary ?? null
 
   return (
     <PhoneScreen>
@@ -19,6 +24,20 @@ export default function EndCompletePage() {
         <p className="text-lg font-bold text-slate-900">대화가 종료되었습니다.</p>
         <div className="w-10 border-t border-emerald-200" />
         <p className="text-sm text-slate-400">이번 대화 내용은 저장되지 않습니다.</p>
+
+        {summary && summary.summary && (
+          <div className="w-full text-left bg-slate-50 rounded-xl p-3 mt-2">
+            <p className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+              <FileText size={14} />
+              진료 요약 · 답변 {summary.conversation_count}개
+            </p>
+            <p className="text-sm text-slate-800 leading-relaxed">{summary.summary}</p>
+            <p className="text-[11px] text-slate-400 mt-2">
+              환자 진술을 정리한 것으로, 진단이 아닙니다.
+            </p>
+          </div>
+        )}
+
         <div className="w-full flex items-start gap-2 bg-emerald-50 rounded-xl p-3 mt-2">
           <Trash2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
           <p className="text-xs text-emerald-700 leading-relaxed text-left">

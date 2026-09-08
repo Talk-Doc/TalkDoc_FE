@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, Square, Hand, Keyboard, ListChecks, ChevronDown, Volume2 } from 'lucide-react'
+import doctorAvatar from '../../assets/illustration-doctor-avatar.png'
 
 // TODO(백엔드 연동): 실제로는 녹음 중 오디오를 STT API로 스트리밍하고,
 // [질문 종료]를 누르면 최종 텍스트를 LLM이 다듬어서 questionText로 받게 됩니다.
@@ -67,7 +68,10 @@ export default function QuestionAnswerStep({
 
       {/* 의료진 질문 카드 */}
       <div className="rounded-2xl border border-slate-100 p-4">
-        <p className="text-xs text-slate-400 mb-2">의료진의 질문</p>
+        <div className="flex items-start justify-between mb-2">
+          <p className="text-xs text-slate-400">의료진의 질문</p>
+          <img src={doctorAvatar} alt="" className="w-9 h-9 rounded-full object-cover -mt-1" />
+        </div>
         {phase === 'asking' ? (
           <>
             <p className="text-lg font-bold text-slate-900 mb-4">듣고 있어요…</p>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PhoneScreen from '../components/PhoneScreen'
-import StatusBanner from './conversation/StatusBanner'
 import ConversationScreenShell from './conversation/ConversationScreenShell'
 import QuestionAnswerStep from './conversation/QuestionAnswerStep'
 import SignCameraStep from './conversation/SignCameraStep'
@@ -9,41 +8,72 @@ import AnalyzingStep from './conversation/AnalyzingStep'
 import ResultConfirmStep from './conversation/ResultConfirmStep'
 import RecognitionFailedStep from './conversation/RecognitionFailedStep'
 import TextInputStep from './conversation/TextInputStep'
+import ChoiceAnswerStep from './conversation/ChoiceAnswerStep'
 import DoctorAnswerStep from './conversation/DoctorAnswerStep'
 import EndConfirmModal from './conversation/EndConfirmModal'
-import type { ConversationStep } from '../types/conversation'
+import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
 
-// TODO(백엔드 연동): recognizedAnswer는 실제로는 Vision AI + LLM 응답으로 채워집니다.
+// TODO(백엔드 연동): recognizedWords/answerText는 실제로는 Vision AI + LLM 응답으로 채워집니다.
+const MOCK_RECOGNIZED_WORDS = ['배', '아프다']
 const MOCK_RECOGNIZED_ANSWER = '배가 아파요.'
 
-// 시작 화면 / 종료 화면 / 답변 확인 등 아직 디자인이 나오지 않은 화면들은
-// 새 디자인이 나올 때까지 예전 뼈대(StatusBanner) 그대로 둡니다.
-// -> 'question' 단계만 새 디자인(ConversationScreenShell)을 씁니다.
+// 화면 상단 스테퍼의 진행도(0~3)와 배지 문구는 step/phase 조합으로 정해집니다.
+function getStepMeta(step: ConversationStep, phase: QuestionPhase) {
+  switch (step) {
+    case 'question':
+      return phase === 'method-select'
+        ? { activeIndex: 0, phaseLabel: '현재 답변 입력 중' }
+        : { activeIndex: 0, phaseLabel: '현재 질문 확인 중' }
+    case 'analyzing':
+      return { activeIndex: 1, phaseLabel: '현재 답변 입력 중' }
+    case 'result-confirm':
+      return { activeIndex: 2, phaseLabel: '현재 답변 입력 중' }
+    case 'doctor-answer':
+      return { activeIndex: 3, phaseLabel: '현재 답변 입력 중' }
+    default:
+      return { activeIndex: 0, phaseLabel: '현재 답변 입력 중' }
+  }
+}
+
 export default function ConversationPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState<ConversationStep>('question')
-  const [questionPhase, setQuestionPhase] = useState<'asking' | 'ready'>('asking')
+  const [questionPhase, setQuestionPhase] = useState<QuestionPhase>('mic-waiting')
   const [questionText, setQuestionText] = useState('')
   const [answerText, setAnswerText] = useState('')
+  const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
 
   const resetForNextQuestion = () => {
     setQuestionText('')
     setAnswerText('')
-    setQuestionPhase('asking')
+    setQuestionPhase('mic-waiting')
     setStep('question')
   }
 
-  if (step === 'question') {
-    return (
-      <PhoneScreen>
-        <div className="relative flex-1 flex flex-col">
-          <ConversationScreenShell
-            activeIndex={questionPhase === 'asking' ? 0 : 1}
-            onRequestEnd={() => setShowEndConfirm(true)}
-          >
+  const deliverAnswer = () => {
+    setHistory((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), doctorQuestionText: questionText, patientAnswerText: answerText },
+    ])
+    setStep('doctor-answer')
+  }
+
+  const { activeIndex, phaseLabel } = getStepMeta(step, questionPhase)
+
+  return (
+    <PhoneScreen>
+      <div className="relative flex-1 flex flex-col">
+        <ConversationScreenShell
+          activeIndex={activeIndex}
+          phaseLabel={phaseLabel}
+          onRequestEnd={() => setShowEndConfirm(true)}
+        >
+          {step === 'question' && (
             <QuestionAnswerStep
               onPhaseChange={setQuestionPhase}
+              onRequestEnd={() => setShowEndConfirm(true)}
+              onRestart={resetForNextQuestion}
               onAnswerWithSign={(q) => {
                 setQuestionText(q)
                 setStep('sign-camera')
@@ -52,72 +82,75 @@ export default function ConversationPage() {
                 setQuestionText(q)
                 setStep('text-input')
               }}
-            />
-          </ConversationScreenShell>
-
-          {showEndConfirm && (
-            <EndConfirmModal
-              onConfirmEnd={() => navigate('/end')}
-              onCancel={() => setShowEndConfirm(false)}
+              onAnswerWithChoice={(q) => {
+                setQuestionText(q)
+                setStep('choice-select')
+              }}
             />
           )}
-        </div>
-      </PhoneScreen>
-    )
-  }
 
-  return (
-    <PhoneScreen>
-      <div className="relative flex-1 flex flex-col">
-        <StatusBanner step={step} onRequestEnd={() => setShowEndConfirm(true)} />
+          {step === 'sign-camera' && (
+            <SignCameraStep questionText={questionText} onDone={() => setStep('analyzing')} />
+          )}
 
-        {step === 'sign-camera' && (
-          <SignCameraStep onDone={() => setStep('analyzing')} />
-        )}
+          {step === 'analyzing' && (
+            <AnalyzingStep
+              onSuccess={() => {
+                setAnswerText(MOCK_RECOGNIZED_ANSWER)
+                setStep('result-confirm')
+              }}
+              onFailure={() => setStep('recognition-failed')}
+            />
+          )}
 
-        {step === 'analyzing' && (
-          <AnalyzingStep
-            onSuccess={() => {
-              setAnswerText(MOCK_RECOGNIZED_ANSWER)
-              setStep('result-confirm')
-            }}
-            onFailure={() => setStep('recognition-failed')}
-          />
-        )}
+          {step === 'result-confirm' && (
+            <ResultConfirmStep
+              questionText={questionText}
+              answerText={answerText}
+              recognizedWords={MOCK_RECOGNIZED_WORDS}
+              onConfirm={deliverAnswer}
+              onEditAsText={() => setStep('text-input')}
+            />
+          )}
 
-        {step === 'result-confirm' && (
-          <ResultConfirmStep
-            answerText={answerText}
-            onConfirm={() => setStep('doctor-answer')}
-            onRetry={() => setStep('sign-camera')}
-            onEditAsText={() => setStep('text-input')}
-          />
-        )}
+          {step === 'recognition-failed' && (
+            <RecognitionFailedStep
+              questionText={questionText}
+              onRetry={() => setStep('sign-camera')}
+              onEditAsText={() => setStep('text-input')}
+            />
+          )}
 
-        {step === 'recognition-failed' && (
-          <RecognitionFailedStep
-            onRetry={() => setStep('sign-camera')}
-            onEditAsText={() => setStep('text-input')}
-          />
-        )}
+          {step === 'text-input' && (
+            <TextInputStep
+              questionText={questionText}
+              initialText={answerText}
+              onSubmit={(text) => {
+                setAnswerText(text)
+                setStep('result-confirm')
+              }}
+            />
+          )}
 
-        {step === 'text-input' && (
-          <TextInputStep
-            initialText={answerText}
-            onSubmit={(text) => {
-              setAnswerText(text)
-              setStep('result-confirm')
-            }}
-          />
-        )}
+          {step === 'choice-select' && (
+            <ChoiceAnswerStep
+              questionText={questionText}
+              onSubmit={(choice) => {
+                setAnswerText(choice)
+                setStep('result-confirm')
+              }}
+            />
+          )}
 
-        {step === 'doctor-answer' && (
-          <DoctorAnswerStep
-            questionText={questionText}
-            answerText={answerText}
-            onNextQuestion={resetForNextQuestion}
-          />
-        )}
+          {step === 'doctor-answer' && (
+            <DoctorAnswerStep
+              history={history}
+              onRequestEnd={() => setShowEndConfirm(true)}
+              onRestart={resetForNextQuestion}
+              onNextQuestion={resetForNextQuestion}
+            />
+          )}
+        </ConversationScreenShell>
 
         {showEndConfirm && (
           <EndConfirmModal

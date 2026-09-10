@@ -14,7 +14,7 @@ export default function LandingPage() {
       </div>
 
       <button
-        onClick={() => navigate('/conversation')}
+        onClick={() => navigate('/ready')}
         className="w-full flex items-center justify-center gap-1.5 py-4 rounded-full bg-gradient-to-r from-teal-600 to-teal-700 text-white font-semibold shadow-lg shadow-teal-700/25"
       >
         대화 시작하기

@@ -11,6 +11,7 @@ import TextInputStep from './conversation/TextInputStep'
 import ChoiceAnswerStep from './conversation/ChoiceAnswerStep'
 import DoctorAnswerStep from './conversation/DoctorAnswerStep'
 import EndConfirmModal from './conversation/EndConfirmModal'
+import RestartConfirmModal from './conversation/RestartConfirmModal'
 import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
 
 // TODO(백엔드 연동): recognizedWords/answerText는 실제로는 Vision AI + LLM 응답으로 채워집니다.
@@ -48,12 +49,21 @@ export default function ConversationPage() {
   const [answerSource, setAnswerSource] = useState<AnswerSource>('sign-camera')
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false)
 
   const resetForNextQuestion = () => {
     setQuestionText('')
     setAnswerText('')
     setQuestionPhase('mic-waiting')
     setStep('question')
+  }
+
+  // "대화 다시 시작" 확정: 지금까지 확정된 답변 기록까지 전부 지우고 첫 질문 대기 상태로 되돌립니다.
+  // 세션을 나가는 건 아니라서(/end로 이동하지 않음) "대화 종료"와는 다릅니다.
+  const confirmRestart = () => {
+    setHistory([])
+    resetForNextQuestion()
+    setShowRestartConfirm(false)
   }
 
   // 답변 방법 선택 화면으로 되돌아갑니다 (질문 텍스트는 그대로 유지).
@@ -104,7 +114,7 @@ export default function ConversationPage() {
               initialPhase={questionPhase}
               onPhaseChange={setQuestionPhase}
               onRequestEnd={() => setShowEndConfirm(true)}
-              onRestart={resetForNextQuestion}
+              onRestart={() => setShowRestartConfirm(true)}
               onAnswerWithSign={(q) => {
                 setQuestionText(q)
                 setAnswerSource('sign-camera')
@@ -180,7 +190,7 @@ export default function ConversationPage() {
             <DoctorAnswerStep
               history={history}
               onRequestEnd={() => setShowEndConfirm(true)}
-              onRestart={resetForNextQuestion}
+              onRestart={() => setShowRestartConfirm(true)}
               onNextQuestion={resetForNextQuestion}
             />
           )}
@@ -190,6 +200,14 @@ export default function ConversationPage() {
           <EndConfirmModal
             onConfirmEnd={() => navigate('/end')}
             onCancel={() => setShowEndConfirm(false)}
+          />
+        )}
+
+        {showRestartConfirm && (
+          <RestartConfirmModal
+            confirmedCount={history.length}
+            onConfirmRestart={confirmRestart}
+            onCancel={() => setShowRestartConfirm(false)}
           />
         )}
       </div>

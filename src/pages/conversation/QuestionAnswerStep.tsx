@@ -22,6 +22,7 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function QuestionAnswerStep({
+  initialPhase,
   onAnswerWithSign,
   onAnswerWithText,
   onAnswerWithChoice,
@@ -29,6 +30,7 @@ export default function QuestionAnswerStep({
   onRequestEnd,
   onRestart,
 }: {
+  initialPhase?: QuestionPhase
   onAnswerWithSign: (questionText: string) => void
   onAnswerWithText: (questionText: string) => void
   onAnswerWithChoice: (questionText: string) => void
@@ -36,7 +38,7 @@ export default function QuestionAnswerStep({
   onRequestEnd: () => void
   onRestart: () => void
 }) {
-  const [phase, setPhase] = useState<QuestionPhase>('mic-waiting')
+  const [phase, setPhase] = useState<QuestionPhase>(initialPhase ?? 'mic-waiting')
   const [seconds, setSeconds] = useState(0)
   const [voiceGuide, setVoiceGuide] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)

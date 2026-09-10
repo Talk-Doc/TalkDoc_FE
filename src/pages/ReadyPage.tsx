@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Lightbulb } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
 import TalkDacLogo from '../components/TalkDacLogo'
-import doctorPatient from '../assets/illustrations/doctor-patient.png'
+import patientWithPhone from '../assets/illustrations/patient-with-phone.png'
 
 // 랜딩(스플래시) 화면에서 "대화 시작하기"를 누르면 오는 중간 확인 화면입니다.
 // 실제로 대화(의료진 질문 대기)로 들어가기 전에 한 번 더 준비 상태를 알려줍니다.
@@ -16,7 +16,7 @@ export default function ReadyPage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center text-center gap-4">
-        <img src={doctorPatient} alt="" className="w-full max-w-[260px]" />
+        <img src={patientWithPhone} alt="" className="w-40" />
         <div>
           <p className="text-xl font-bold text-slate-900 leading-snug">
             대화를 시작할

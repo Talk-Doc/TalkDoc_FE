@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Camera, Square, Sun, Hand, User } from 'lucide-react'
+import { Camera, Square, Sun, Hand, User, Lightbulb } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 
 // TODO(백엔드 연동): 실제로는 [답변 촬영 시작하기]를 누르면 카메라 스트림 녹화를 시작하고,
@@ -65,13 +65,16 @@ export default function SignCameraStep({
 
       {recording ? (
         <>
-          <div className="rounded-2xl bg-slate-50 p-3.5">
-            <p className="text-sm font-semibold text-slate-600 mb-1.5">더 정확한 인식을 위해 이렇게 해주세요.</p>
-            <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
-              <li>양손과 상반신이 모두 화면에 보이도록 해주세요.</li>
-              <li>밝은 곳에서 촬영해주세요.</li>
-              <li>한 동작을 하고 1초 정도 정지해주세요.</li>
-            </ul>
+          <div className="rounded-2xl bg-slate-50 p-3.5 flex items-start gap-2.5">
+            <Lightbulb size={16} className="text-slate-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-slate-600">더 정확한 인식을 위해 이렇게 해주세요.</p>
+              <ul className="text-xs text-slate-400 mt-1 space-y-1 list-disc list-inside">
+                <li>양손과 상반신이 모두 화면에 보이도록 해주세요.</li>
+                <li>밝은 곳에서 촬영해주세요.</li>
+                <li>한 동작을 하고 1초 정도 정지해주세요.</li>
+              </ul>
+            </div>
           </div>
           <button
             onClick={onDone}

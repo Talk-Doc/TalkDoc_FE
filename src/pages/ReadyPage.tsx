@@ -47,8 +47,8 @@ export default function ReadyPage() {
           대화 시작하기
           <ChevronRight size={18} />
         </button>
-        <button onClick={() => navigate('/')} className="text-xs text-slate-400 py-1">
-          잠시 둘러보기
+        <button onClick={() => navigate('/guide')} className="text-xs text-slate-400 py-1">
+          가이드 보기
         </button>
       </div>
     </PhoneScreen>

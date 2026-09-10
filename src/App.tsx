@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import ReadyPage from './pages/ReadyPage'
+import GuidePage from './pages/GuidePage'
 import ConversationPage from './pages/ConversationPage'
 import EndCompletePage from './pages/EndCompletePage'
 import { AccessibilityProvider } from './context/AccessibilityContext'
@@ -14,6 +15,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/ready" element={<ReadyPage />} />
+          <Route path="/guide" element={<GuidePage />} />
           <Route path="/conversation" element={<ConversationPage />} />
           <Route path="/end" element={<EndCompletePage />} />
         </Routes>

@@ -1,6 +1,7 @@
 import { Sparkles, Volume2, Pencil, Send, Calendar } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import HelpTipBox from './HelpTipBox'
+import { speak } from '../../utils/speech'
 
 export default function ResultConfirmStep({
   questionText,
@@ -34,7 +35,13 @@ export default function ResultConfirmStep({
             <p className="text-[11px] text-slate-400 mb-0.5">변환된 답변</p>
             <p className="text-lg font-bold text-slate-900">“{answerText}”</p>
           </div>
-          <Volume2 size={18} className="text-teal-500 shrink-0" />
+          <button
+            onClick={() => speak(answerText)}
+            aria-label="변환된 답변 음성으로 듣기"
+            className="text-teal-500 shrink-0"
+          >
+            <Volume2 size={18} />
+          </button>
         </div>
 
         {answerSource === 'sign-camera' && (

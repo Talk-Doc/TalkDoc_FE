@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Send, Volume2 } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import HelpTipBox from './HelpTipBox'
 import type { QuestionRecord } from '../../types/conversation'
+import { speak } from '../../utils/speech'
 
 export default function DoctorAnswerStep({
   history,
@@ -14,6 +16,15 @@ export default function DoctorAnswerStep({
   onRestart: () => void
   onNextQuestion: () => void
 }) {
+  const lastAnswer = history[history.length - 1]?.patientAnswerText ?? ''
+
+  // 이 화면에 들어올 때 방금 전달된 답변을 한 번 음성으로 읽어줍니다.
+  // (안내 문구 "전달된 내용이 음성으로도 재생되었습니다"가 가리키는 재생)
+  useEffect(() => {
+    if (lastAnswer) speak(lastAnswer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <>
       <div className="rounded-2xl bg-teal-50 p-4 flex flex-col items-center text-center gap-1.5">
@@ -76,7 +87,14 @@ export default function DoctorAnswerStep({
 
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span>더 편하게 이용하고 싶다면 아래 기능을 활용해보세요.</span>
-        <Volume2 size={13} className="shrink-0" />
+        <button
+          onClick={() => speak(lastAnswer)}
+          disabled={!lastAnswer}
+          aria-label="전달된 답변 다시 듣기"
+          className="shrink-0 disabled:opacity-40"
+        >
+          <Volume2 size={13} />
+        </button>
       </div>
     </>
   )

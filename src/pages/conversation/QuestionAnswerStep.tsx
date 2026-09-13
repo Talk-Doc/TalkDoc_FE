@@ -11,6 +11,7 @@ import { ApiError } from '../../api/client'
 import type { QuestionResponse } from '../../api/types'
 import type { QuestionPhase } from '../../types/conversation'
 import { formatQuestionTime } from '../../utils/time'
+import { speak } from '../../utils/speech'
 
 // 파형(waveform)은 실제 오디오 분석 없이, 보기용으로 높이가 제각각인 막대를 나열한 것입니다.
 const WAVEFORM_BARS = [6, 14, 22, 10, 18, 26, 12, 20, 8, 16, 24, 10, 14, 20, 8, 18, 12, 22]
@@ -82,6 +83,7 @@ export default function QuestionAnswerStep({
       const question = await postQuestionAudio(sessionId, doctorToken, audioBlob)
       setQuestion(question)
       setPhase('method-select')
+      if (voiceGuide) speak(question.text)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
       setPhase('mic-waiting')
@@ -177,7 +179,7 @@ export default function QuestionAnswerStep({
         time={formatQuestionTime(question.asked_at)}
       />
 
-      <UtilityToolbar />
+      <UtilityToolbar onReplayQuestion={() => speak(question.text)} />
 
       <div>
         <p className="text-xs font-semibold text-slate-400 mb-2">답변 방법 선택하기</p>

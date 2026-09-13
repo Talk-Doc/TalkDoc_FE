@@ -22,18 +22,23 @@ export interface QuestionResponse {
 }
 
 export interface RecognizedSign {
-  label: string
-  confidence: number
+  label: string | null
+  confidence: number | null
   accepted: boolean
+  reason: 'LOW_CONFIDENCE' | 'INSUFFICIENT_LANDMARKS' | null
 }
 
 export interface SignResponse {
   question_id: string | null
   intents: Intent[]
   candidates: string[]
+  sign: RecognizedSign
   signs: RecognizedSign[]
   all_accepted: boolean
   accepted_labels: string[]
+  model_version: string | null
+  request_id: string | null
+  processing_ms: number | null
 }
 
 export interface PreviewResponse {

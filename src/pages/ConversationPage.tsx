@@ -120,7 +120,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
 
   // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
   const deliverAnswer = async () => {
-    const labels = answerSource === 'sign-camera' ? signLabels : [answerText]
+    const labels = answerSource === 'sign-camera' ? signLabels : []
     try {
       const conversation = await confirmAnswer(
         session.session_id,

@@ -39,8 +39,8 @@ export default function ResultConfirmStep({
           <>
             <p className="text-xs font-semibold text-slate-500 mb-2">인식된 수어</p>
             <div className="flex gap-2">
-              {recognizedWords.map((word) => (
-                <div key={word} className="flex-1 flex flex-col items-center gap-1.5">
+              {recognizedWords.map((word, i) => (
+                <div key={`${word}-${i}`} className="flex-1 flex flex-col items-center gap-1.5">
                   <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-white text-xs">
                     {word}
                   </div>

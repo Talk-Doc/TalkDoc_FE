@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle } from 'lucide-react'
+import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import { useMediaRecorder } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
 import { postSign } from '../../api/sign'
 import { ApiError } from '../../api/client'
+
+// TalkDoc-VisionAI는 영상 1개당 단어 1개만 인식합니다. 그래서 이 화면은 촬영을 여러 번 반복해
+// 인식된 단어들을 클라이언트에서 모아두고, 환자가 [답변 완료하기]를 누르면 그 단어 목록으로
+// 다음 단계(분석)로 넘어갑니다.
+const RETRY_MESSAGE: Record<string, string> = {
+  LOW_CONFIDENCE: '동작을 다시 인식하지 못했어요. 한 동작을 천천히, 정확하게 다시 촬영해주세요.',
+  INSUFFICIENT_LANDMARKS: '양손과 상반신이 화면에 보이지 않아요. 손과 상반신이 모두 보이도록 다시 촬영해주세요.',
+}
 
 export default function SignCameraStep({
   questionText,
@@ -16,11 +24,13 @@ export default function SignCameraStep({
   onFailure: () => void
 }) {
   const { session_id: sessionId, patient_token: patientToken } = useSession()
+  const [words, setWords] = useState<string[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const recorder = useMediaRecorder()
   const videoRef = useRef<HTMLVideoElement>(null)
+  const startedAtRef = useRef(0)
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = recorder.stream
@@ -33,20 +43,25 @@ export default function SignCameraStep({
       setError(recorder.error)
       return
     }
+    startedAtRef.current = Date.now()
     setRecording(true)
   }
 
   const stopRecording = async () => {
+    const duration = (Date.now() - startedAtRef.current) / 1000
     const videoBlob = await recorder.stop()
     setRecording(false)
     setSubmitting(true)
     setError(null)
     try {
-      const result = await postSign(sessionId, patientToken, videoBlob)
-      if (result.all_accepted && result.accepted_labels.length > 0) {
-        onSuccess(result.accepted_labels)
+      const result = await postSign(sessionId, patientToken, videoBlob, duration)
+      if (result.sign.accepted && result.sign.label) {
+        setWords((prev) => [...prev, result.sign.label as string])
       } else {
-        onFailure()
+        setError(
+          (result.sign.reason && RETRY_MESSAGE[result.sign.reason]) ??
+            '동작을 인식하지 못했어요. 다시 촬영해주세요.',
+        )
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '수어 인식에 실패했어요. 다시 시도해주세요.')
@@ -55,16 +70,35 @@ export default function SignCameraStep({
     }
   }
 
+  const finishAnswer = () => {
+    if (words.length > 0) onSuccess(words)
+    else onFailure()
+  }
+
   return (
     <>
       <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
 
+      {words.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {words.map((word, i) => (
+            <span
+              key={`${word}-${i}`}
+              className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2.5 py-1 text-xs font-semibold text-teal-700"
+            >
+              <Check size={11} />
+              {word}
+            </span>
+          ))}
+        </div>
+      )}
+
       {recording ? (
         <div className="rounded-2xl bg-teal-50 p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-teal-900">지금 수어로 답변해주세요.</p>
+            <p className="text-sm font-bold text-teal-900">지금 수어로 한 단어를 답변해주세요.</p>
             <p className="text-xs text-teal-600 mt-0.5">
-              카메라가 수어를 인식하고 있어요. 답변이 끝나면 자동으로 분석이 시작됩니다.
+              한 동작을 하고 정지한 뒤, 촬영을 마치면 단어가 인식돼요.
             </p>
           </div>
           <span className="relative w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
@@ -75,7 +109,7 @@ export default function SignCameraStep({
       ) : (
         <div className="flex items-center gap-1.5 text-xs text-teal-600 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block" />
-          카메라 준비 완료
+          {words.length > 0 ? '다음 단어를 촬영하거나 답변을 완료하세요.' : '카메라 준비 완료'}
         </div>
       )}
 
@@ -155,8 +189,16 @@ export default function SignCameraStep({
             className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold"
           >
             <Camera size={16} />
-            답변 촬영 시작하기
+            {words.length > 0 ? '다음 단어 촬영하기' : '답변 촬영 시작하기'}
           </button>
+          {words.length > 0 && (
+            <button
+              onClick={finishAnswer}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-teal-500 text-teal-700 font-semibold"
+            >
+              답변 완료하기
+            </button>
+          )}
           <div>
             <p className="text-xs font-semibold text-slate-400 mb-2">수어 촬영 가이드</p>
             <div className="grid grid-cols-3 gap-2">

@@ -1,4 +1,4 @@
-import { Sparkles, Volume2, Pencil, Send, Calendar } from 'lucide-react'
+import { Sparkles, Volume2, Pencil, Send, Calendar, AlertCircle } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import HelpTipBox from './HelpTipBox'
 import { speak } from '../../utils/speech'
@@ -9,6 +9,8 @@ export default function ResultConfirmStep({
   answerText,
   answerSource,
   recognizedWords,
+  submitting,
+  error,
   onConfirm,
   onEditAsText,
 }: {
@@ -17,6 +19,8 @@ export default function ResultConfirmStep({
   answerText: string
   answerSource: 'sign-camera' | 'text-input' | 'choice-select'
   recognizedWords: string[]
+  submitting?: boolean
+  error?: string | null
   onConfirm: () => void
   onEditAsText: () => void
 }) {
@@ -71,25 +75,38 @@ export default function ResultConfirmStep({
         )}
       </div>
 
-      <HelpTipBox
-        title="확인해 주세요."
-        body="의미가 다르거나 어색한 부분이 있다면 수정할 수 있어요. 수정하지 않고 전달하면, 위 내용이 의료진에게 전송됩니다."
-      />
+      {error ? (
+        <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      ) : (
+        <HelpTipBox
+          title="확인해 주세요."
+          body="의미가 다르거나 어색한 부분이 있다면 수정할 수 있어요. 수정하지 않고 전달하면, 위 내용이 의료진에게 전송됩니다."
+        />
+      )}
 
       <div className="mt-auto flex flex-col gap-2">
         <button
           onClick={onEditAsText}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-medium"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-medium disabled:opacity-40"
         >
           <Pencil size={15} />
           답변 수정하기
         </button>
         <button
           onClick={onConfirm}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold disabled:opacity-60"
         >
-          <Send size={15} />
-          의료진에게 전달하기
+          {submitting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send size={15} />
+          )}
+          {submitting ? '전달하는 중...' : error ? '다시 전달하기' : '의료진에게 전달하기'}
         </button>
       </div>
     </>

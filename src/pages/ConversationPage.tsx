@@ -98,10 +98,13 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
+  const [delivering, setDelivering] = useState(false)
+  const [deliverError, setDeliverError] = useState<string | null>(null)
 
   const resetForNextQuestion = () => {
     setQuestion(null)
     setAnswerText('')
+    setDeliverError(null)
     setQuestionPhase('mic-waiting')
     setStep('question')
   }
@@ -121,8 +124,11 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   }
 
   // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
+  // 실패하면(네트워크 오류 등) 화면에 머물면서 에러를 보여주고, 같은 버튼으로 재시도할 수 있게 합니다.
   const deliverAnswer = async () => {
     const labels = answerSource === 'sign-camera' ? signLabels : []
+    setDelivering(true)
+    setDeliverError(null)
     try {
       const conversation = await confirmAnswer(
         session.session_id,
@@ -139,8 +145,12 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
         },
       ])
       setStep('doctor-answer')
-    } catch {
-      // TODO: 사용자에게 실패를 알리고 재시도할 수 있게 하기 (지금은 결과 확인 화면에 머무름)
+    } catch (err) {
+      setDeliverError(
+        err instanceof ApiError ? err.message : '답변을 전달하지 못했어요. 다시 시도해주세요.',
+      )
+    } finally {
+      setDelivering(false)
     }
   }
 
@@ -215,7 +225,10 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               case 'recognition-failed':
                 return backToMethodSelect
               case 'result-confirm':
-                return () => setStep(answerSource)
+                return () => {
+                  setDeliverError(null)
+                  setStep(answerSource)
+                }
               default:
                 return undefined
             }
@@ -264,8 +277,11 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               answerText={answerText}
               answerSource={answerSource}
               recognizedWords={signLabels}
+              submitting={delivering}
+              error={deliverError}
               onConfirm={deliverAnswer}
               onEditAsText={() => {
+                setDeliverError(null)
                 setAnswerSource('text-input')
                 setStep('text-input')
               }}

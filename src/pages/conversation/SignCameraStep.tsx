@@ -1,17 +1,59 @@
-import { useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle } from 'lucide-react'
 import QuestionCard from './QuestionCard'
+import { useMediaRecorder } from '../../hooks/useMediaRecorder'
+import { useSession } from '../../context/SessionContext'
+import { postSign } from '../../api/sign'
+import { ApiError } from '../../api/client'
 
-// TODO(백엔드 연동): 실제로는 [답변 촬영 시작하기]를 누르면 카메라 스트림 녹화를 시작하고,
-// 프레임을 계속 Vision AI 서버로 스트리밍하다가 [답변 중지하기]를 누르면 최종 분석 요청을 보내게 됩니다.
 export default function SignCameraStep({
   questionText,
-  onDone,
+  onSuccess,
+  onFailure,
 }: {
   questionText: string
-  onDone: () => void
+  onSuccess: (labels: string[]) => void
+  onFailure: () => void
 }) {
+  const { session_id: sessionId, patient_token: patientToken } = useSession()
   const [recording, setRecording] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const recorder = useMediaRecorder()
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = recorder.stream
+  }, [recorder.stream])
+
+  const startRecording = async () => {
+    setError(null)
+    const ok = await recorder.start({ video: { facingMode: 'user' }, audio: false })
+    if (!ok) {
+      setError(recorder.error)
+      return
+    }
+    setRecording(true)
+  }
+
+  const stopRecording = async () => {
+    const videoBlob = await recorder.stop()
+    setRecording(false)
+    setSubmitting(true)
+    setError(null)
+    try {
+      const result = await postSign(sessionId, patientToken, videoBlob)
+      if (result.all_accepted && result.accepted_labels.length > 0) {
+        onSuccess(result.accepted_labels)
+      } else {
+        onFailure()
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : '수어 인식에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <>
@@ -38,13 +80,23 @@ export default function SignCameraStep({
       )}
 
       <div className="relative flex-1 min-h-[220px] rounded-2xl bg-slate-800 overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-3 border-2 border-transparent">
+        <div className="absolute inset-3 border-2 border-transparent z-10">
           <span className="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-xl" />
           <span className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-xl" />
         </div>
-        <User size={72} className="text-slate-500" strokeWidth={1} />
+        {recorder.stream ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover -scale-x-100"
+          />
+        ) : (
+          <User size={72} className="text-slate-500" strokeWidth={1} />
+        )}
         {recording ? (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">
             <p className="text-xs text-white/80">수어를 인식하고 있어요...</p>
             <div className="flex items-end gap-[3px] h-4">
               {[4, 9, 6, 12, 5, 10, 7, 4].map((h, i) => (
@@ -57,13 +109,25 @@ export default function SignCameraStep({
             </div>
           </div>
         ) : (
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/30 rounded-full px-3 py-1">
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/30 rounded-full px-3 py-1 z-10">
             양손과 상반신이 모두 보이도록 해주세요.
           </p>
         )}
       </div>
 
-      {recording ? (
+      {error && (
+        <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {submitting ? (
+        <div className="w-full flex items-center justify-center gap-2 py-4 text-teal-600 font-semibold">
+          <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          수어를 분석하고 있어요...
+        </div>
+      ) : recording ? (
         <>
           <div className="rounded-2xl bg-slate-50 p-3.5 flex items-start gap-2.5">
             <Lightbulb size={16} className="text-slate-400 shrink-0 mt-0.5" />
@@ -77,7 +141,7 @@ export default function SignCameraStep({
             </div>
           </div>
           <button
-            onClick={onDone}
+            onClick={stopRecording}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-teal-500 text-teal-600 font-semibold"
           >
             <Square size={16} fill="currentColor" />
@@ -87,7 +151,7 @@ export default function SignCameraStep({
       ) : (
         <>
           <button
-            onClick={() => setRecording(true)}
+            onClick={startRecording}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold"
           >
             <Camera size={16} />

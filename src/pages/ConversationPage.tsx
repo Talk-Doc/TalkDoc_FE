@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PhoneScreen from '../components/PhoneScreen'
+import TalkDacLogo from '../components/TalkDacLogo'
 import ConversationScreenShell from './conversation/ConversationScreenShell'
 import QuestionAnswerStep from './conversation/QuestionAnswerStep'
 import SignCameraStep from './conversation/SignCameraStep'
@@ -12,14 +13,12 @@ import ChoiceAnswerStep from './conversation/ChoiceAnswerStep'
 import DoctorAnswerStep from './conversation/DoctorAnswerStep'
 import EndConfirmModal from './conversation/EndConfirmModal'
 import RestartConfirmModal from './conversation/RestartConfirmModal'
+import { SessionProvider, type SessionInfo } from '../context/SessionContext'
+import { createSession, deleteSession } from '../api/session'
+import { previewAnswer, confirmAnswer } from '../api/answer'
+import { ApiError } from '../api/client'
 import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
 
-// TODO(백엔드 연동): recognizedWords/answerText는 실제로는 Vision AI + LLM 응답으로 채워집니다.
-const MOCK_RECOGNIZED_WORDS = ['배', '아프다']
-const MOCK_RECOGNIZED_ANSWER = '배가 아파요.'
-
-// 답변 방법 선택 후 어느 입력 화면을 거쳐 왔는지 기억해뒀다가, result-confirm/인식 실패 화면에서
-// "이전 단계로"를 누르면 그 입력 화면으로 되돌아갈 수 있게 합니다.
 type AnswerSource = 'sign-camera' | 'text-input' | 'choice-select'
 
 // 화면 상단 스테퍼의 진행도(0~3)와 배지 문구는 step/phase 조합으로 정해집니다.
@@ -40,11 +39,60 @@ function getStepMeta(step: ConversationStep, phase: QuestionPhase) {
 
 export default function ConversationPage() {
   const navigate = useNavigate()
+  const [session, setSession] = useState<SessionInfo | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    createSession()
+      .then(setSession)
+      .catch((err) =>
+        setSessionError(err instanceof ApiError ? err.message : '서버에 연결하지 못했어요.'),
+      )
+  }, [])
+
+  if (sessionError) {
+    return (
+      <PhoneScreen>
+        <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
+          <TalkDacLogo size="md" />
+          <p className="text-sm text-red-500">{sessionError}</p>
+          <button
+            onClick={() => navigate('/ready')}
+            className="mt-2 px-4 py-2 rounded-full border border-slate-200 text-sm text-slate-600"
+          >
+            돌아가기
+          </button>
+        </div>
+      </PhoneScreen>
+    )
+  }
+
+  if (!session) {
+    return (
+      <PhoneScreen>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <TalkDacLogo size="md" />
+          <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </PhoneScreen>
+    )
+  }
+
+  return (
+    <SessionProvider value={session}>
+      <ConversationFlow session={session} />
+    </SessionProvider>
+  )
+}
+
+function ConversationFlow({ session }: { session: SessionInfo }) {
+  const navigate = useNavigate()
   const [step, setStep] = useState<ConversationStep>('question')
   const [questionPhase, setQuestionPhase] = useState<QuestionPhase>('mic-waiting')
   const [questionText, setQuestionText] = useState('')
   const [answerText, setAnswerText] = useState('')
   const [answerSource, setAnswerSource] = useState<AnswerSource>('sign-camera')
+  const [signLabels, setSignLabels] = useState<string[]>([])
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
@@ -70,46 +118,56 @@ export default function ConversationPage() {
     setStep('question')
   }
 
-  const deliverAnswer = () => {
-    setHistory((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), doctorQuestionText: questionText, patientAnswerText: answerText },
-    ])
-    setStep('doctor-answer')
+  // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
+  const deliverAnswer = async () => {
+    const labels = answerSource === 'sign-camera' ? signLabels : [answerText]
+    try {
+      const conversation = await confirmAnswer(
+        session.session_id,
+        session.patient_token,
+        labels,
+        answerText,
+      )
+      setHistory((prev) => [
+        ...prev,
+        {
+          id: conversation.answer_id,
+          doctorQuestionText: conversation.question,
+          patientAnswerText: conversation.answer,
+        },
+      ])
+      setStep('doctor-answer')
+    } catch {
+      // TODO: 사용자에게 실패를 알리고 재시도할 수 있게 하기 (지금은 결과 확인 화면에 머무름)
+    }
+  }
+
+  const endSession = async () => {
+    try {
+      await deleteSession(session.session_id, session.doctor_token)
+    } catch {
+      // 세션이 이미 만료됐어도 종료 자체는 진행합니다.
+    }
+    navigate('/end')
   }
 
   const { activeIndex, phaseLabel } = getStepMeta(step, questionPhase)
 
-  // 화면마다 "이전 단계로" 버튼이 어디로 이동할지 결정합니다. undefined면 버튼을 숨깁니다.
-  const onBack: (() => void) | undefined = (() => {
-    switch (step) {
-      case 'question':
-        // 대화 화면 안에서 더 되돌아갈 곳이 없으므로, 대화 시작 전 화면으로 나갑니다.
-        return () => navigate('/ready')
-      case 'sign-camera':
-      case 'text-input':
-      case 'choice-select':
-      case 'recognition-failed':
-        return backToMethodSelect
-      case 'result-confirm':
-        return () => setStep(answerSource)
-      default:
-        return undefined
-    }
-  })()
-
-  // "AI 분석 중" 화면은 헤더/스테퍼가 없는 단독 화면이라 ConversationScreenShell 밖에서 렌더링합니다.
+  // "AI 분석 중" 화면은 헤더/스테퍼가 없는 단독 화면이라 ConversationScreenShell 밖에서 렌더링하고,
+  // 이 화면이 뜨는 동안 실제 자연어 변환(미리보기) API를 호출합니다.
   if (step === 'analyzing') {
     return (
       <PhoneScreen>
         <div className="relative flex-1 flex flex-col">
-          <AnalyzingStep
-            onBack={() => setStep('sign-camera')}
-            onSuccess={() => {
-              setAnswerText(MOCK_RECOGNIZED_ANSWER)
+          <AnalyzingPreview
+            session={session}
+            labels={signLabels}
+            onSuccess={(answer) => {
+              setAnswerText(answer)
               setStep('result-confirm')
             }}
             onFailure={() => setStep('recognition-failed')}
+            onBack={() => setStep('sign-camera')}
           />
         </div>
       </PhoneScreen>
@@ -123,7 +181,21 @@ export default function ConversationPage() {
           activeIndex={activeIndex}
           phaseLabel={phaseLabel}
           onRequestEnd={() => setShowEndConfirm(true)}
-          onBack={onBack}
+          onBack={(() => {
+            switch (step) {
+              case 'question':
+                return () => navigate('/ready')
+              case 'sign-camera':
+              case 'text-input':
+              case 'choice-select':
+              case 'recognition-failed':
+                return backToMethodSelect
+              case 'result-confirm':
+                return () => setStep(answerSource)
+              default:
+                return undefined
+            }
+          })()}
         >
           {step === 'question' && (
             <QuestionAnswerStep
@@ -150,7 +222,14 @@ export default function ConversationPage() {
           )}
 
           {step === 'sign-camera' && (
-            <SignCameraStep questionText={questionText} onDone={() => setStep('analyzing')} />
+            <SignCameraStep
+              questionText={questionText}
+              onSuccess={(labels) => {
+                setSignLabels(labels)
+                setStep('analyzing')
+              }}
+              onFailure={() => setStep('recognition-failed')}
+            />
           )}
 
           {step === 'result-confirm' && (
@@ -158,9 +237,12 @@ export default function ConversationPage() {
               questionText={questionText}
               answerText={answerText}
               answerSource={answerSource}
-              recognizedWords={MOCK_RECOGNIZED_WORDS}
+              recognizedWords={signLabels}
               onConfirm={deliverAnswer}
-              onEditAsText={() => setStep('text-input')}
+              onEditAsText={() => {
+                setAnswerSource('text-input')
+                setStep('text-input')
+              }}
             />
           )}
 
@@ -168,7 +250,10 @@ export default function ConversationPage() {
             <RecognitionFailedStep
               questionText={questionText}
               onRetry={() => setStep('sign-camera')}
-              onEditAsText={() => setStep('text-input')}
+              onEditAsText={() => {
+                setAnswerSource('text-input')
+                setStep('text-input')
+              }}
             />
           )}
 
@@ -204,10 +289,7 @@ export default function ConversationPage() {
         </ConversationScreenShell>
 
         {showEndConfirm && (
-          <EndConfirmModal
-            onConfirmEnd={() => navigate('/end')}
-            onCancel={() => setShowEndConfirm(false)}
-          />
+          <EndConfirmModal onConfirmEnd={endSession} onCancel={() => setShowEndConfirm(false)} />
         )}
 
         {showRestartConfirm && (
@@ -220,4 +302,37 @@ export default function ConversationPage() {
       </div>
     </PhoneScreen>
   )
+}
+
+// "AI 분석 중" 화면이 떠 있는 동안 자연어 변환(미리보기) API를 호출하는 작은 컴포넌트입니다.
+// 화면 자체(AnalyzingStep)는 순수 표시용이라, 네트워크 호출은 여기서 감싸서 처리합니다.
+function AnalyzingPreview({
+  session,
+  labels,
+  onSuccess,
+  onFailure,
+  onBack,
+}: {
+  session: SessionInfo
+  labels: string[]
+  onSuccess: (answer: string) => void
+  onFailure: () => void
+  onBack: () => void
+}) {
+  useEffect(() => {
+    let cancelled = false
+    previewAnswer(session.session_id, session.patient_token, labels)
+      .then((res) => {
+        if (!cancelled) onSuccess(res.answer)
+      })
+      .catch(() => {
+        if (!cancelled) onFailure()
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return <AnalyzingStep onBack={onBack} />
 }

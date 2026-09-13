@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Square, Hand, Keyboard, ListChecks, Volume2 } from 'lucide-react'
+import { Mic, Square, Hand, Keyboard, ListChecks, Volume2, AlertCircle } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import QuestionCard from './QuestionCard'
 import UtilityToolbar from './UtilityToolbar'
 import HelpTipBox from './HelpTipBox'
+import { useMediaRecorder } from '../../hooks/useMediaRecorder'
+import { useSession } from '../../context/SessionContext'
+import { postQuestionAudio } from '../../api/question'
+import { ApiError } from '../../api/client'
 import type { QuestionPhase } from '../../types/conversation'
-
-// TODO(백엔드 연동): 실제로는 녹음 중 오디오를 STT API로 스트리밍하고,
-// 마이크 버튼을 다시 누르면 최종 텍스트를 LLM이 다듬어서 questionText로 받게 됩니다.
-const MOCK_QUESTION = '어디가 아파서 오셨어요?'
 
 // 파형(waveform)은 실제 오디오 분석 없이, 보기용으로 높이가 제각각인 막대를 나열한 것입니다.
 const WAVEFORM_BARS = [6, 14, 22, 10, 18, 26, 12, 20, 8, 16, 24, 10, 14, 20, 8, 18, 12, 22]
@@ -38,10 +38,15 @@ export default function QuestionAnswerStep({
   onRequestEnd: () => void
   onRestart: () => void
 }) {
+  const { session_id: sessionId, doctor_token: doctorToken } = useSession()
   const [phase, setPhase] = useState<QuestionPhase>(initialPhase ?? 'mic-waiting')
   const [seconds, setSeconds] = useState(0)
   const [voiceGuide, setVoiceGuide] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [questionText, setQuestionText] = useState('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recorder = useMediaRecorder()
 
   useEffect(() => {
     onPhaseChange(phase)
@@ -54,15 +59,33 @@ export default function QuestionAnswerStep({
     }
   }, [])
 
-  const startRecording = () => {
+  const startRecording = async () => {
+    setError(null)
+    const ok = await recorder.start({ audio: true })
+    if (!ok) {
+      setError(recorder.error)
+      return
+    }
     setSeconds(0)
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
     setPhase('mic-recording')
   }
 
-  const finishRecording = () => {
+  const finishRecording = async () => {
     if (timerRef.current) clearInterval(timerRef.current)
-    setPhase('method-select')
+    const audioBlob = await recorder.stop()
+    setSubmitting(true)
+    setError(null)
+    try {
+      const question = await postQuestionAudio(sessionId, doctorToken, audioBlob)
+      setQuestionText(question.text)
+      setPhase('method-select')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
+      setPhase('mic-waiting')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (phase !== 'method-select') {
@@ -72,7 +95,9 @@ export default function QuestionAnswerStep({
         <img src={doctorSolo} alt="" className="w-40 mx-auto" />
 
         <div className="text-center">
-          {recording ? (
+          {submitting ? (
+            <p className="text-lg font-bold text-slate-900 mb-4">질문을 분석하고 있어요...</p>
+          ) : recording ? (
             <>
               <p className="text-lg font-bold text-slate-900 mb-4">의료진의 질문을 수집중입니다</p>
               <p className="text-2xl font-bold text-teal-600 mb-4">{formatTime(seconds)}</p>
@@ -85,24 +110,28 @@ export default function QuestionAnswerStep({
             </p>
           )}
 
-          <button
-            onClick={recording ? finishRecording : startRecording}
-            aria-label={recording ? '질문 녹음 종료' : '질문 녹음 시작'}
-            className="relative w-20 h-20 mx-auto flex items-center justify-center"
-          >
-            {recording && (
-              <span className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-40" />
-            )}
-            <span className="relative w-20 h-20 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-600/30">
-              {recording ? (
-                <Square size={26} className="text-white" fill="currentColor" />
-              ) : (
-                <Mic size={30} className="text-white" />
+          {submitting ? (
+            <div className="w-12 h-12 mx-auto border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <button
+              onClick={recording ? finishRecording : startRecording}
+              aria-label={recording ? '질문 녹음 종료' : '질문 녹음 시작'}
+              className="relative w-20 h-20 mx-auto flex items-center justify-center"
+            >
+              {recording && (
+                <span className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-40" />
               )}
-            </span>
-          </button>
+              <span className="relative w-20 h-20 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-600/30">
+                {recording ? (
+                  <Square size={26} className="text-white" fill="currentColor" />
+                ) : (
+                  <Mic size={30} className="text-white" />
+                )}
+              </span>
+            </button>
+          )}
 
-          {recording && (
+          {recording && !submitting && (
             <div className="flex items-end justify-center gap-[3px] h-6 mt-4">
               {WAVEFORM_BARS.map((h, i) => (
                 <span
@@ -114,22 +143,31 @@ export default function QuestionAnswerStep({
             </div>
           )}
 
-          <p className="text-xs text-slate-400 mt-4">
-            {recording ? '질문이 끝나면 버튼을 다시 눌러주세요' : '의료진이 버튼을 눌러 질문하세요'}
-          </p>
+          {!submitting && (
+            <p className="text-xs text-slate-400 mt-4">
+              {recording ? '질문이 끝나면 버튼을 다시 눌러주세요' : '의료진이 버튼을 눌러 질문하세요'}
+            </p>
+          )}
         </div>
 
-        <HelpTipBox
-          title={recording ? '질문을 이해하기 어려우신가요?' : '의료진의 버튼을 누르고 음성으로 질문합니다.'}
-          body={recording ? '질문을 이해하기 쉽게 도와드려요.' : '수집된 음성은 텍스트로 변환됩니다.'}
-        />
+        {error ? (
+          <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        ) : (
+          <HelpTipBox
+            title={recording ? '질문을 이해하기 어려우신가요?' : '의료진의 버튼을 누르고 음성으로 질문합니다.'}
+            body={recording ? '질문을 이해하기 쉽게 도와드려요.' : '수집된 음성은 텍스트로 변환됩니다.'}
+          />
+        )}
       </>
     )
   }
 
   return (
     <>
-      <QuestionCard questionText={MOCK_QUESTION} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
 
       <UtilityToolbar />
 
@@ -137,7 +175,7 @@ export default function QuestionAnswerStep({
         <p className="text-xs font-semibold text-slate-400 mb-2">답변 방법 선택하기</p>
         <div className="flex flex-col gap-2">
           <button
-            onClick={() => onAnswerWithSign(MOCK_QUESTION)}
+            onClick={() => onAnswerWithSign(questionText)}
             className="w-full flex flex-col items-center gap-1 py-3.5 rounded-xl bg-teal-50 border-2 border-teal-500 text-teal-700"
           >
             <Hand size={18} />
@@ -146,7 +184,7 @@ export default function QuestionAnswerStep({
           </button>
           <div className="flex gap-2">
             <button
-              onClick={() => onAnswerWithText(MOCK_QUESTION)}
+              onClick={() => onAnswerWithText(questionText)}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
             >
               <Keyboard size={16} />
@@ -154,7 +192,7 @@ export default function QuestionAnswerStep({
               <span className="text-[10px] text-slate-400">직접 입력할 수 있어요.</span>
             </button>
             <button
-              onClick={() => onAnswerWithChoice(MOCK_QUESTION)}
+              onClick={() => onAnswerWithChoice(questionText)}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
             >
               <ListChecks size={16} />

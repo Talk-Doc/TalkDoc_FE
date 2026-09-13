@@ -1,16 +1,18 @@
-import { Sparkles, Volume2, Pencil, Send } from 'lucide-react'
+import { Sparkles, Volume2, Pencil, Send, Calendar } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import HelpTipBox from './HelpTipBox'
 
 export default function ResultConfirmStep({
   questionText,
   answerText,
+  answerSource,
   recognizedWords,
   onConfirm,
   onEditAsText,
 }: {
   questionText: string
   answerText: string
+  answerSource: 'sign-camera' | 'text-input' | 'choice-select'
   recognizedWords: string[]
   onConfirm: () => void
   onEditAsText: () => void
@@ -33,17 +35,31 @@ export default function ResultConfirmStep({
           <Volume2 size={18} className="text-teal-500 shrink-0" />
         </div>
 
-        <p className="text-xs font-semibold text-slate-500 mb-2">인식된 수어</p>
-        <div className="flex gap-2">
-          {recognizedWords.map((word) => (
-            <div key={word} className="flex-1 flex flex-col items-center gap-1.5">
-              <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-white text-xs">
-                {word}
-              </div>
-              <span className="text-xs font-medium text-slate-600">{word}</span>
+        {answerSource === 'sign-camera' && (
+          <>
+            <p className="text-xs font-semibold text-slate-500 mb-2">인식된 수어</p>
+            <div className="flex gap-2">
+              {recognizedWords.map((word) => (
+                <div key={word} className="flex-1 flex flex-col items-center gap-1.5">
+                  <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-white text-xs">
+                    {word}
+                  </div>
+                  <span className="text-xs font-medium text-slate-600">{word}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
+
+        {answerSource === 'choice-select' && (
+          <>
+            <p className="text-xs font-semibold text-slate-500 mb-2">선택지</p>
+            <div className="w-1/3 flex flex-col items-center gap-1.5 rounded-xl border-2 border-teal-500 bg-white p-3">
+              <Calendar size={18} className="text-teal-600" />
+              <span className="text-xs font-medium text-slate-700 text-center">{answerText}</span>
+            </div>
+          </>
+        )}
       </div>
 
       <HelpTipBox

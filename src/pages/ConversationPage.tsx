@@ -29,8 +29,6 @@ function getStepMeta(step: ConversationStep, phase: QuestionPhase) {
       return phase === 'method-select'
         ? { activeIndex: 0, phaseLabel: '현재 답변 입력 중' }
         : { activeIndex: 0, phaseLabel: '현재 질문 확인 중' }
-    case 'analyzing':
-      return { activeIndex: 1, phaseLabel: '현재 답변 입력 중' }
     case 'result-confirm':
       return { activeIndex: 2, phaseLabel: '현재 답변 입력 중' }
     case 'doctor-answer':
@@ -100,6 +98,24 @@ export default function ConversationPage() {
     }
   })()
 
+  // "AI 분석 중" 화면은 헤더/스테퍼가 없는 단독 화면이라 ConversationScreenShell 밖에서 렌더링합니다.
+  if (step === 'analyzing') {
+    return (
+      <PhoneScreen>
+        <div className="relative flex-1 flex flex-col">
+          <AnalyzingStep
+            onBack={() => setStep('sign-camera')}
+            onSuccess={() => {
+              setAnswerText(MOCK_RECOGNIZED_ANSWER)
+              setStep('result-confirm')
+            }}
+            onFailure={() => setStep('recognition-failed')}
+          />
+        </div>
+      </PhoneScreen>
+    )
+  }
+
   return (
     <PhoneScreen>
       <div className="relative flex-1 flex flex-col">
@@ -137,20 +153,11 @@ export default function ConversationPage() {
             <SignCameraStep questionText={questionText} onDone={() => setStep('analyzing')} />
           )}
 
-          {step === 'analyzing' && (
-            <AnalyzingStep
-              onSuccess={() => {
-                setAnswerText(MOCK_RECOGNIZED_ANSWER)
-                setStep('result-confirm')
-              }}
-              onFailure={() => setStep('recognition-failed')}
-            />
-          )}
-
           {step === 'result-confirm' && (
             <ResultConfirmStep
               questionText={questionText}
               answerText={answerText}
+              answerSource={answerSource}
               recognizedWords={MOCK_RECOGNIZED_WORDS}
               onConfirm={deliverAnswer}
               onEditAsText={() => setStep('text-input')}

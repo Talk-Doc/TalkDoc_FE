@@ -52,7 +52,7 @@ export default function DoctorAnswerStep({
       <button
         onClick={onNextQuestion}
         className="flex-1 w-full flex flex-col items-center justify-center text-center gap-2 py-2"
-        title="(데모용) 눌러서 다음 질문 받기"
+        title="눌러서 다음 질문 받기"
       >
         <img src={doctorSolo} alt="" className="w-28" />
         <p className="text-base font-bold text-slate-900">의료진의 다음 질문을 기다리는 중이에요.</p>

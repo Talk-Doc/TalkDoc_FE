@@ -1,14 +1,16 @@
-import { useNavigate } from 'react-router-dom'
-import { Check, Sparkle, Trash2, Home } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Check, Sparkle, Trash2, Home, FileText } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
 
 export default function EndCompletePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const summary = (location.state as { summary?: string } | null)?.summary
 
   return (
     <PhoneScreen>
-      <div className="flex-1 flex flex-col items-center justify-center text-center gap-4">
-        <div className="relative w-36 h-36 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 overflow-y-auto">
+        <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
           <div className="absolute inset-0 rounded-full bg-teal-50" />
           <Sparkle size={14} className="absolute top-6 left-7 text-teal-300 fill-teal-300" />
           <Sparkle size={10} className="absolute top-10 right-6 text-teal-300 fill-teal-300" />
@@ -17,10 +19,21 @@ export default function EndCompletePage() {
             <Check size={28} className="text-teal-500" strokeWidth={3} />
           </div>
         </div>
-        <p className="text-lg font-bold text-slate-900">대화가 종료되었습니다.</p>
-        <div className="w-10 border-t-2 border-teal-200" />
-        <p className="text-sm text-slate-400">이번 대화 내용은 저장되지 않습니다.</p>
-        <div className="w-full flex items-start gap-2 bg-teal-50 rounded-xl p-3 mt-2">
+        <p className="text-lg font-bold text-slate-900 shrink-0">대화가 종료되었습니다.</p>
+        <div className="w-10 border-t-2 border-teal-200 shrink-0" />
+
+        {summary && (
+          <div className="w-full rounded-xl border border-slate-100 p-3 text-left">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <FileText size={14} className="text-teal-500 shrink-0" />
+              <p className="text-xs font-semibold text-slate-500">진료 요약</p>
+            </div>
+            <p className="text-sm text-slate-700 leading-relaxed">{summary}</p>
+          </div>
+        )}
+
+        <p className="text-sm text-slate-400 shrink-0">이번 대화 내용은 저장되지 않습니다.</p>
+        <div className="w-full flex items-start gap-2 bg-teal-50 rounded-xl p-3 mt-2 shrink-0">
           <Trash2 size={16} className="text-teal-500 shrink-0 mt-0.5" />
           <p className="text-xs text-teal-700 leading-relaxed text-left">
             현재 세션의 모든 데이터는 종료와 동시에 삭제됩니다.

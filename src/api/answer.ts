@@ -1,4 +1,4 @@
-import { apiJson } from './client'
+import { apiBlob, apiJson } from './client'
 import type { Conversation, PreviewResponse } from './types'
 
 export function previewAnswer(sessionId: string, patientToken: string, labels: string[]) {
@@ -35,4 +35,9 @@ export function updateAnswer(
     token,
     body: { answer },
   })
+}
+
+// 확정된 답변을 실제 음성 파일로 합성해 받아옵니다. doctor_token 필요.
+export function getAnswerTts(sessionId: string, doctorToken: string, answerId: string) {
+  return apiBlob(`/api/sessions/${sessionId}/answer/${answerId}/tts`, { token: doctorToken })
 }

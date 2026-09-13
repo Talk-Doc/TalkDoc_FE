@@ -1,29 +1,75 @@
-import { useEffect } from 'react'
-import { Send, Volume2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Send, Volume2, Pencil, Check, X } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import HelpTipBox from './HelpTipBox'
 import type { QuestionRecord } from '../../types/conversation'
+import { useSession } from '../../context/SessionContext'
+import { getAnswerTts } from '../../api/answer'
+import { playAudioBlob } from '../../utils/audio'
 import { speak } from '../../utils/speech'
+
+// 확정된 답변을 읽어줄 때는 백엔드의 실제 TTS API(음성 합성)를 우선 쓰고,
+// 실패하면(네트워크 오류 등) 브라우저 내장 음성 합성으로 대체합니다.
+async function playAnswer(sessionId: string, doctorToken: string, answerId: string, text: string) {
+  try {
+    const blob = await getAnswerTts(sessionId, doctorToken, answerId)
+    await playAudioBlob(blob)
+  } catch {
+    speak(text)
+  }
+}
 
 export default function DoctorAnswerStep({
   history,
   onRequestEnd,
   onRestart,
   onNextQuestion,
+  onEditAnswer,
 }: {
   history: QuestionRecord[]
   onRequestEnd: () => void
   onRestart: () => void
   onNextQuestion: () => void
+  onEditAnswer: (answerId: string, newText: string) => Promise<void>
 }) {
-  const lastAnswer = history[history.length - 1]?.patientAnswerText ?? ''
+  const { session_id: sessionId, doctor_token: doctorToken } = useSession()
+  const lastRecord = history[history.length - 1]
+  const lastAnswer = lastRecord?.patientAnswerText ?? ''
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   // 이 화면에 들어올 때 방금 전달된 답변을 한 번 음성으로 읽어줍니다.
   // (안내 문구 "전달된 내용이 음성으로도 재생되었습니다"가 가리키는 재생)
   useEffect(() => {
-    if (lastAnswer) speak(lastAnswer)
+    if (lastRecord) playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const startEdit = (record: QuestionRecord) => {
+    setEditingId(record.id)
+    setEditText(record.patientAnswerText ?? '')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditText('')
+  }
+
+  const saveEdit = async (answerId: string) => {
+    const text = editText.trim()
+    if (!text) return
+    setSavingId(answerId)
+    try {
+      await onEditAnswer(answerId, text)
+      setEditingId(null)
+      setEditText('')
+    } catch {
+      // 실패하면 편집 상태를 유지해서 다시 시도할 수 있게 둡니다.
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   return (
     <>
@@ -54,7 +100,43 @@ export default function DoctorAnswerStep({
               <p className="text-slate-500">
                 {i + 1}. {record.doctorQuestionText}
               </p>
-              <p className="font-semibold text-slate-900">{record.patientAnswerText}</p>
+              {editingId === record.id ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <input
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    autoFocus
+                    className="flex-1 rounded-lg border border-teal-300 px-2 py-1 text-sm font-semibold text-slate-900"
+                  />
+                  <button
+                    onClick={() => saveEdit(record.id)}
+                    disabled={savingId === record.id}
+                    aria-label="답변 수정 저장"
+                    className="text-teal-600 shrink-0 disabled:opacity-40"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    disabled={savingId === record.id}
+                    aria-label="답변 수정 취소"
+                    className="text-slate-400 shrink-0 disabled:opacity-40"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-slate-900">{record.patientAnswerText}</p>
+                  <button
+                    onClick={() => startEdit(record)}
+                    aria-label="답변 수정하기"
+                    className="text-slate-300 shrink-0"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -88,8 +170,8 @@ export default function DoctorAnswerStep({
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span>더 편하게 이용하고 싶다면 아래 기능을 활용해보세요.</span>
         <button
-          onClick={() => speak(lastAnswer)}
-          disabled={!lastAnswer}
+          onClick={() => lastRecord && playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)}
+          disabled={!lastRecord}
           aria-label="전달된 답변 다시 듣기"
           className="shrink-0 disabled:opacity-40"
         >

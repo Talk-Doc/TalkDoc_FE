@@ -14,8 +14,8 @@ import DoctorAnswerStep from './conversation/DoctorAnswerStep'
 import EndConfirmModal from './conversation/EndConfirmModal'
 import RestartConfirmModal from './conversation/RestartConfirmModal'
 import { SessionProvider, type SessionInfo } from '../context/SessionContext'
-import { createSession, deleteSession } from '../api/session'
-import { previewAnswer, confirmAnswer } from '../api/answer'
+import { createSession, deleteSession, generateSummary } from '../api/session'
+import { previewAnswer, confirmAnswer, updateAnswer } from '../api/answer'
 import { ApiError } from '../api/client'
 import type { QuestionResponse } from '../api/types'
 import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
@@ -144,13 +144,33 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
     }
   }
 
+  // 대화 요약 안 결과 확인 화면의 [답변 수정하기]가 아니라, 전달 완료 후 요약에 남은 오타 등을
+  // 고치는 용도입니다. doctor_token/patient_token 둘 다 허용되는 엔드포인트라 patient_token을 씁니다.
+  const editAnswer = async (answerId: string, newText: string) => {
+    const conversation = await updateAnswer(session.session_id, session.patient_token, answerId, newText)
+    setHistory((prev) =>
+      prev.map((record) =>
+        record.id === answerId ? { ...record, patientAnswerText: conversation.answer } : record,
+      ),
+    )
+  }
+
   const endSession = async () => {
+    // 세션이 삭제되기 전에 지금까지 확정된 답변들의 진료 요약을 먼저 받아둡니다.
+    let summary = ''
+    if (history.length > 0) {
+      try {
+        summary = (await generateSummary(session.session_id, session.doctor_token)).summary
+      } catch {
+        // 요약 생성에 실패해도 종료 자체는 막지 않습니다.
+      }
+    }
     try {
       await deleteSession(session.session_id, session.doctor_token)
     } catch {
       // 세션이 이미 만료됐어도 종료 자체는 진행합니다.
     }
-    navigate('/end')
+    navigate('/end', { state: { summary } })
   }
 
   const { activeIndex, phaseLabel } = getStepMeta(step, questionPhase)
@@ -294,6 +314,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               onRequestEnd={() => setShowEndConfirm(true)}
               onRestart={() => setShowRestartConfirm(true)}
               onNextQuestion={resetForNextQuestion}
+              onEditAnswer={editAnswer}
             />
           )}
         </ConversationScreenShell>

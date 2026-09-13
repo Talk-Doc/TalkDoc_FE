@@ -63,3 +63,26 @@ export async function apiMultipart<T>(
   })
   return handle<T>(res)
 }
+
+// TTS(답변 음성 합성)처럼 JSON이 아니라 오디오 바이너리를 그대로 돌려주는 엔드포인트용 요청.
+export async function apiBlob(
+  path: string,
+  options: { method?: string; token?: string } = {},
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? 'GET',
+    headers: {
+      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    let body: ApiErrorBody
+    try {
+      body = await res.json()
+    } catch {
+      body = { code: 'UNKNOWN', message: `요청이 실패했어요. (HTTP ${res.status})`, timestamp: '' }
+    }
+    throw new ApiError(res.status, body)
+  }
+  return res.blob()
+}

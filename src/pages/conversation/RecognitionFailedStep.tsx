@@ -3,16 +3,18 @@ import QuestionCard from './QuestionCard'
 
 export default function RecognitionFailedStep({
   questionText,
+  time,
   onRetry,
   onEditAsText,
 }: {
   questionText: string
+  time?: string
   onRetry: () => void
   onEditAsText: () => void
 }) {
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
         <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">

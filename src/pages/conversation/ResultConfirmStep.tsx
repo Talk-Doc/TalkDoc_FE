@@ -4,6 +4,7 @@ import HelpTipBox from './HelpTipBox'
 
 export default function ResultConfirmStep({
   questionText,
+  time,
   answerText,
   answerSource,
   recognizedWords,
@@ -11,6 +12,7 @@ export default function ResultConfirmStep({
   onEditAsText,
 }: {
   questionText: string
+  time?: string
   answerText: string
   answerSource: 'sign-camera' | 'text-input' | 'choice-select'
   recognizedWords: string[]
@@ -19,7 +21,7 @@ export default function ResultConfirmStep({
 }) {
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       <div className="rounded-2xl bg-teal-50 p-4">
         <div className="flex items-center gap-1.5 mb-3">

@@ -2,25 +2,27 @@ import { useState } from 'react'
 import { Calendar, Check } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 
-const OPTIONS = ['오늘부터', '어제부터', '3일 전부터', '일주일 전부터', '한 달 전부터', '그보다 더 전부터']
-
-// TODO(백엔드 연동): 실제로는 질문 의도에 맞는 선택지 목록을 LLM이 만들어서 내려주게 됩니다.
-// 지금은 "언제부터 아프셨나요?" 같은 기간형 질문을 가정한 고정 목록입니다.
+// 선택지는 백엔드가 질문에 내려준 실제 수어 어휘(candidates)를 그대로 씁니다.
+// 답변 확정 시 이 라벨은 유효한 수어 어휘라서, 텍스트 입력과 달리 confirm의 labels로도 쓸 수 있습니다.
 export default function ChoiceAnswerStep({
   questionText,
+  time,
+  candidates,
   onSubmit,
 }: {
   questionText: string
+  time?: string
+  candidates: string[]
   onSubmit: (choice: string) => void
 }) {
   const [selected, setSelected] = useState<string | null>(null)
 
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상이 시작된 시점을 선택해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="제공된 선택지 중에서 골라주세요." time={time} />
 
       <div className="grid grid-cols-3 gap-2">
-        {OPTIONS.map((option) => {
+        {candidates.map((option) => {
           const active = selected === option
           return (
             <button

@@ -16,10 +16,12 @@ const RETRY_MESSAGE: Record<string, string> = {
 
 export default function SignCameraStep({
   questionText,
+  time,
   onSuccess,
   onFailure,
 }: {
   questionText: string
+  time?: string
   onSuccess: (labels: string[]) => void
   onFailure: () => void
 }) {
@@ -77,7 +79,7 @@ export default function SignCameraStep({
 
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       {words.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

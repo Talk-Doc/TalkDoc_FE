@@ -17,7 +17,9 @@ import { SessionProvider, type SessionInfo } from '../context/SessionContext'
 import { createSession, deleteSession } from '../api/session'
 import { previewAnswer, confirmAnswer } from '../api/answer'
 import { ApiError } from '../api/client'
+import type { QuestionResponse } from '../api/types'
 import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
+import { formatQuestionTime } from '../utils/time'
 
 type AnswerSource = 'sign-camera' | 'text-input' | 'choice-select'
 
@@ -89,7 +91,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const navigate = useNavigate()
   const [step, setStep] = useState<ConversationStep>('question')
   const [questionPhase, setQuestionPhase] = useState<QuestionPhase>('mic-waiting')
-  const [questionText, setQuestionText] = useState('')
+  const [question, setQuestion] = useState<QuestionResponse | null>(null)
   const [answerText, setAnswerText] = useState('')
   const [answerSource, setAnswerSource] = useState<AnswerSource>('sign-camera')
   const [signLabels, setSignLabels] = useState<string[]>([])
@@ -98,7 +100,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
 
   const resetForNextQuestion = () => {
-    setQuestionText('')
+    setQuestion(null)
     setAnswerText('')
     setQuestionPhase('mic-waiting')
     setStep('question')
@@ -152,6 +154,8 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   }
 
   const { activeIndex, phaseLabel } = getStepMeta(step, questionPhase)
+  const questionText = question?.text ?? ''
+  const questionTime = question ? formatQuestionTime(question.asked_at) : undefined
 
   // "AI 분석 중" 화면은 헤더/스테퍼가 없는 단독 화면이라 ConversationScreenShell 밖에서 렌더링하고,
   // 이 화면이 뜨는 동안 실제 자연어 변환(미리보기) API를 호출합니다.
@@ -204,17 +208,17 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               onRequestEnd={() => setShowEndConfirm(true)}
               onRestart={() => setShowRestartConfirm(true)}
               onAnswerWithSign={(q) => {
-                setQuestionText(q)
+                setQuestion(q)
                 setAnswerSource('sign-camera')
                 setStep('sign-camera')
               }}
               onAnswerWithText={(q) => {
-                setQuestionText(q)
+                setQuestion(q)
                 setAnswerSource('text-input')
                 setStep('text-input')
               }}
               onAnswerWithChoice={(q) => {
-                setQuestionText(q)
+                setQuestion(q)
                 setAnswerSource('choice-select')
                 setStep('choice-select')
               }}
@@ -224,6 +228,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'sign-camera' && (
             <SignCameraStep
               questionText={questionText}
+              time={questionTime}
               onSuccess={(labels) => {
                 setSignLabels(labels)
                 setStep('analyzing')
@@ -235,6 +240,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'result-confirm' && (
             <ResultConfirmStep
               questionText={questionText}
+              time={questionTime}
               answerText={answerText}
               answerSource={answerSource}
               recognizedWords={signLabels}
@@ -249,6 +255,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'recognition-failed' && (
             <RecognitionFailedStep
               questionText={questionText}
+              time={questionTime}
               onRetry={() => setStep('sign-camera')}
               onEditAsText={() => {
                 setAnswerSource('text-input')
@@ -260,6 +267,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'text-input' && (
             <TextInputStep
               questionText={questionText}
+              time={questionTime}
               initialText={answerText}
               onSubmit={(text) => {
                 setAnswerText(text)
@@ -271,6 +279,8 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'choice-select' && (
             <ChoiceAnswerStep
               questionText={questionText}
+              time={questionTime}
+              candidates={question?.candidates ?? []}
               onSubmit={(choice) => {
                 setAnswerText(choice)
                 setStep('result-confirm')

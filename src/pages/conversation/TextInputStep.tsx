@@ -3,10 +3,12 @@ import QuestionCard from './QuestionCard'
 
 export default function TextInputStep({
   questionText,
+  time,
   initialText,
   onSubmit,
 }: {
   questionText: string
+  time?: string
   initialText: string
   onSubmit: (text: string) => void
 }) {
@@ -14,7 +16,7 @@ export default function TextInputStep({
 
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       <p className="text-xs text-slate-400">답변을 텍스트로 입력해주세요</p>
       <textarea

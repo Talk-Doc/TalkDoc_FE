@@ -8,7 +8,9 @@ import { useMediaRecorder } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
 import { postQuestionAudio } from '../../api/question'
 import { ApiError } from '../../api/client'
+import type { QuestionResponse } from '../../api/types'
 import type { QuestionPhase } from '../../types/conversation'
+import { formatQuestionTime } from '../../utils/time'
 
 // 파형(waveform)은 실제 오디오 분석 없이, 보기용으로 높이가 제각각인 막대를 나열한 것입니다.
 const WAVEFORM_BARS = [6, 14, 22, 10, 18, 26, 12, 20, 8, 16, 24, 10, 14, 20, 8, 18, 12, 22]
@@ -31,9 +33,9 @@ export default function QuestionAnswerStep({
   onRestart,
 }: {
   initialPhase?: QuestionPhase
-  onAnswerWithSign: (questionText: string) => void
-  onAnswerWithText: (questionText: string) => void
-  onAnswerWithChoice: (questionText: string) => void
+  onAnswerWithSign: (question: QuestionResponse) => void
+  onAnswerWithText: (question: QuestionResponse) => void
+  onAnswerWithChoice: (question: QuestionResponse) => void
   onPhaseChange: (phase: QuestionPhase) => void
   onRequestEnd: () => void
   onRestart: () => void
@@ -44,7 +46,7 @@ export default function QuestionAnswerStep({
   const [voiceGuide, setVoiceGuide] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [questionText, setQuestionText] = useState('')
+  const [question, setQuestion] = useState<QuestionResponse | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recorder = useMediaRecorder()
 
@@ -78,7 +80,7 @@ export default function QuestionAnswerStep({
     setError(null)
     try {
       const question = await postQuestionAudio(sessionId, doctorToken, audioBlob)
-      setQuestionText(question.text)
+      setQuestion(question)
       setPhase('method-select')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
@@ -165,9 +167,15 @@ export default function QuestionAnswerStep({
     )
   }
 
+  if (!question) return null
+
   return (
     <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time="오전 09:42" />
+      <QuestionCard
+        questionText={question.text}
+        guideText="증상을 설명해주세요."
+        time={formatQuestionTime(question.asked_at)}
+      />
 
       <UtilityToolbar />
 
@@ -175,7 +183,7 @@ export default function QuestionAnswerStep({
         <p className="text-xs font-semibold text-slate-400 mb-2">답변 방법 선택하기</p>
         <div className="flex flex-col gap-2">
           <button
-            onClick={() => onAnswerWithSign(questionText)}
+            onClick={() => onAnswerWithSign(question)}
             className="w-full flex flex-col items-center gap-1 py-3.5 rounded-xl bg-teal-50 border-2 border-teal-500 text-teal-700"
           >
             <Hand size={18} />
@@ -184,7 +192,7 @@ export default function QuestionAnswerStep({
           </button>
           <div className="flex gap-2">
             <button
-              onClick={() => onAnswerWithText(questionText)}
+              onClick={() => onAnswerWithText(question)}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
             >
               <Keyboard size={16} />
@@ -192,7 +200,7 @@ export default function QuestionAnswerStep({
               <span className="text-[10px] text-slate-400">직접 입력할 수 있어요.</span>
             </button>
             <button
-              onClick={() => onAnswerWithChoice(questionText)}
+              onClick={() => onAnswerWithChoice(question)}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
             >
               <ListChecks size={16} />

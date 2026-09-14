@@ -26,6 +26,7 @@ function formatTime(totalSeconds: number) {
 
 export default function QuestionAnswerStep({
   initialPhase,
+  initialQuestion,
   onAnswerWithSign,
   onAnswerWithText,
   onAnswerWithChoice,
@@ -34,6 +35,10 @@ export default function QuestionAnswerStep({
   onRestart,
 }: {
   initialPhase?: QuestionPhase
+  // 수어/텍스트/선택지 화면에서 뒤로가기로 돌아오면 이 컴포넌트가 새로 마운트되면서
+  // 자체 question 상태가 초기화돼요. 그때 화면이 빈 채로 멈추지 않도록, 상위(ConversationPage)가
+  // 이미 갖고 있는 질문을 넘겨받아 처음부터 채워둡니다.
+  initialQuestion?: QuestionResponse | null
   onAnswerWithSign: (question: QuestionResponse) => void
   onAnswerWithText: (question: QuestionResponse) => void
   onAnswerWithChoice: (question: QuestionResponse) => void
@@ -47,7 +52,7 @@ export default function QuestionAnswerStep({
   const [voiceGuide, setVoiceGuide] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [question, setQuestion] = useState<QuestionResponse | null>(null)
+  const [question, setQuestion] = useState<QuestionResponse | null>(initialQuestion ?? null)
   const [editingQuestion, setEditingQuestion] = useState(false)
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)

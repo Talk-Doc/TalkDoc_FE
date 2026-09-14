@@ -11,8 +11,10 @@ export default function ResultConfirmStep({
   recognizedWords,
   submitting,
   error,
+  draftInvalidated,
   onConfirm,
   onEditAsText,
+  onQuestionChanged,
 }: {
   questionText: string
   time?: string
@@ -21,8 +23,13 @@ export default function ResultConfirmStep({
   recognizedWords: string[]
   submitting?: boolean
   error?: string | null
+  // 미리보기 이후 의료진이 질문을 수정해서 이 답변 초안이 무효화된 경우: 같은 요청을
+  // 재시도해도 항상 같은 이유로 다시 실패하므로, "다시 전달하기" 대신 질문부터 다시
+  // 확인하도록 안내합니다.
+  draftInvalidated?: boolean
   onConfirm: () => void
   onEditAsText: () => void
+  onQuestionChanged?: () => void
 }) {
   return (
     <>
@@ -97,7 +104,7 @@ export default function ResultConfirmStep({
           답변 수정하기
         </button>
         <button
-          onClick={onConfirm}
+          onClick={draftInvalidated ? onQuestionChanged : onConfirm}
           disabled={submitting}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold disabled:opacity-60"
         >
@@ -106,7 +113,13 @@ export default function ResultConfirmStep({
           ) : (
             <Send size={15} />
           )}
-          {submitting ? '전달하는 중...' : error ? '다시 전달하기' : '의료진에게 전달하기'}
+          {submitting
+            ? '전달하는 중...'
+            : draftInvalidated
+              ? '질문 다시 확인하기'
+              : error
+                ? '다시 전달하기'
+                : '의료진에게 전달하기'}
         </button>
       </div>
     </>

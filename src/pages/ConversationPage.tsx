@@ -15,7 +15,7 @@ import EndConfirmModal from './conversation/EndConfirmModal'
 import RestartConfirmModal from './conversation/RestartConfirmModal'
 import { SessionProvider, type SessionInfo } from '../context/SessionContext'
 import { createSession, deleteSession, generateSummary } from '../api/session'
-import { previewAnswer, confirmAnswer, updateAnswer } from '../api/answer'
+import { previewAnswer, confirmAnswer, confirmDraft, updateAnswer } from '../api/answer'
 import { ApiError } from '../api/client'
 import type { QuestionResponse } from '../api/types'
 import type { ConversationStep, QuestionPhase, QuestionRecord } from '../types/conversation'
@@ -101,6 +101,11 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [answerText, setAnswerText] = useState('')
   const [answerSource, setAnswerSource] = useState<AnswerSource>('sign-camera')
   const [answerLabels, setAnswerLabels] = useState<string[]>([])
+  // 수어 답변은 미리보기(preview)가 만든 초안(draft)의 id/버전을 들고 있다가, 그 초안으로 확정합니다.
+  // 이러면 미리보기 이후 의사가 질문을 수정했을 때 백엔드가 자동으로 확정을 막아줘요(DRAFT_INVALIDATED).
+  const [draftAnswerId, setDraftAnswerId] = useState<string | null>(null)
+  const [draftVersion, setDraftVersion] = useState<number | null>(null)
+  const [draftInvalidated, setDraftInvalidated] = useState(false)
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
@@ -111,6 +116,9 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
     setQuestion(null)
     setAnswerText('')
     setDeliverError(null)
+    setDraftAnswerId(null)
+    setDraftVersion(null)
+    setDraftInvalidated(false)
     setQuestionPhase('mic-waiting')
     setStep('question')
   }
@@ -132,18 +140,17 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
   // 실패하면(네트워크 오류 등) 화면에 머물면서 에러를 보여주고, 같은 버튼으로 재시도할 수 있게 합니다.
   const deliverAnswer = async () => {
-    // choice-select은 카드 문구(예: "오늘부터")를 그대로 쓰는 텍스트 답변이라 라벨이 없습니다
-    // (수어 어휘가 아니라서 라벨로 보내면 백엔드 유효성 검증에 걸립니다).
-    const labels = answerSource === 'sign-camera' ? answerLabels : []
     setDelivering(true)
     setDeliverError(null)
+    setDraftInvalidated(false)
     try {
-      const conversation = await confirmAnswer(
-        session.session_id,
-        session.patient_token,
-        labels,
-        answerText,
-      )
+      // 수어 답변은 미리보기가 만든 초안을 id로 확정합니다: 그 사이 질문이 바뀌었으면
+      // 백엔드가 DRAFT_INVALIDATED로 막아줘요. 텍스트/선택지 답변은 라벨이 없어 이 방식을
+      // 쓸 수 없으니(백엔드에 그런 안전장치 자체가 없음) 기존 방식 그대로 보냅니다.
+      const conversation =
+        answerSource === 'sign-camera' && draftAnswerId !== null && draftVersion !== null
+          ? await confirmDraft(session.session_id, session.patient_token, draftAnswerId, draftVersion)
+          : await confirmAnswer(session.session_id, session.patient_token, [], answerText)
       setHistory((prev) => [
         ...prev,
         {
@@ -154,9 +161,14 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
       ])
       setStep('doctor-answer')
     } catch (err) {
-      setDeliverError(
-        err instanceof ApiError ? err.message : '답변을 전달하지 못했어요. 다시 시도해주세요.',
-      )
+      if (err instanceof ApiError && err.code === 'DRAFT_INVALIDATED') {
+        setDraftInvalidated(true)
+        setDeliverError('의료진이 질문을 수정했어요. 질문을 다시 확인하고 답변해주세요.')
+      } else {
+        setDeliverError(
+          err instanceof ApiError ? err.message : '답변을 전달하지 못했어요. 다시 시도해주세요.',
+        )
+      }
     } finally {
       setDelivering(false)
     }
@@ -204,8 +216,12 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           <AnalyzingPreview
             session={session}
             labels={answerLabels}
-            onSuccess={(answer) => {
+            questionId={question?.question_id}
+            questionVersion={question?.version}
+            onSuccess={(answer, answerId, version) => {
               setAnswerText(answer)
+              setDraftAnswerId(answerId)
+              setDraftVersion(version)
               setStep('result-confirm')
             }}
             onFailure={() => setStep('recognition-failed')}
@@ -235,6 +251,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               case 'result-confirm':
                 return () => {
                   setDeliverError(null)
+                  setDraftInvalidated(false)
                   setStep(answerSource)
                 }
               default:
@@ -245,6 +262,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           {step === 'question' && (
             <QuestionAnswerStep
               initialPhase={questionPhase}
+              initialQuestion={question}
               onPhaseChange={setQuestionPhase}
               onRequestEnd={() => setShowEndConfirm(true)}
               onRestart={() => setShowRestartConfirm(true)}
@@ -287,12 +305,15 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               recognizedWords={answerLabels}
               submitting={delivering}
               error={deliverError}
+              draftInvalidated={draftInvalidated}
               onConfirm={deliverAnswer}
               onEditAsText={() => {
                 setDeliverError(null)
+                setDraftInvalidated(false)
                 setAnswerSource('text-input')
                 setStep('text-input')
               }}
+              onQuestionChanged={backToMethodSelect}
             />
           )}
 
@@ -365,13 +386,17 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
 function AnalyzingPreview({
   session,
   labels,
+  questionId,
+  questionVersion,
   onSuccess,
   onFailure,
   onBack,
 }: {
   session: SessionInfo
   labels: string[]
-  onSuccess: (answer: string) => void
+  questionId?: string
+  questionVersion?: number
+  onSuccess: (answer: string, answerId: string, version: number) => void
   onFailure: () => void
   onBack: () => void
 }) {
@@ -382,9 +407,9 @@ function AnalyzingPreview({
   // "마지막 호출만 반영" ignore 플래그 패턴을 그대로 씁니다.
   useEffect(() => {
     let cancelled = false
-    previewAnswer(session.session_id, session.patient_token, labels)
+    previewAnswer(session.session_id, session.patient_token, labels, questionId, questionVersion)
       .then((res) => {
-        if (!cancelled) onSuccess(res.answer)
+        if (!cancelled) onSuccess(res.answer, res.answer_id, res.version)
       })
       .catch(() => {
         if (!cancelled) onFailure()

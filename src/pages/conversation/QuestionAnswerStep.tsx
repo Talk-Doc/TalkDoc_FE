@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Square, Hand, Keyboard, ListChecks, Volume2, AlertCircle } from 'lucide-react'
+import { Mic, Square, Hand, Keyboard, ListChecks, Volume2, AlertCircle, Check, X } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import QuestionCard from './QuestionCard'
 import UtilityToolbar from './UtilityToolbar'
 import HelpTipBox from './HelpTipBox'
 import { useMediaRecorder } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
-import { postQuestionAudio } from '../../api/question'
+import { postQuestionAudio, updateQuestion } from '../../api/question'
 import { ApiError } from '../../api/client'
 import type { QuestionResponse } from '../../api/types'
 import type { QuestionPhase } from '../../types/conversation'
@@ -48,6 +48,10 @@ export default function QuestionAnswerStep({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [question, setQuestion] = useState<QuestionResponse | null>(null)
+  const [editingQuestion, setEditingQuestion] = useState(false)
+  const [editText, setEditText] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recorder = useMediaRecorder()
 
@@ -171,13 +175,77 @@ export default function QuestionAnswerStep({
 
   if (!question) return null
 
+  const startEditQuestion = () => {
+    setEditText(question.text)
+    setEditError(null)
+    setEditingQuestion(true)
+  }
+
+  const saveEditQuestion = async () => {
+    const text = editText.trim()
+    if (!text) return
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const updated = await updateQuestion(sessionId, doctorToken, question.question_id, text, question.version)
+      setQuestion(updated)
+      setEditingQuestion(false)
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : '질문을 수정하지 못했어요. 다시 시도해주세요.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   return (
     <>
-      <QuestionCard
-        questionText={question.text}
-        guideText="증상을 설명해주세요."
-        time={formatQuestionTime(question.asked_at)}
-      />
+      {editingQuestion ? (
+        <div className="rounded-2xl bg-teal-50 p-4 flex flex-col gap-2">
+          <p className="text-xs text-slate-400">의료진의 질문 수정하기</p>
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            autoFocus
+            rows={2}
+            className="rounded-xl border border-teal-300 p-2.5 text-base font-bold text-slate-900 resize-none bg-white"
+          />
+          {editError && (
+            <p className="text-xs text-red-600 flex items-center gap-1">
+              <AlertCircle size={12} />
+              {editError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setEditingQuestion(false)}
+              disabled={editSaving}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-40"
+            >
+              <X size={14} />
+              취소
+            </button>
+            <button
+              onClick={saveEditQuestion}
+              disabled={editSaving || editText.trim().length === 0}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-teal-700 text-white text-sm font-semibold disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              {editSaving ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check size={14} />
+              )}
+              수정 완료
+            </button>
+          </div>
+        </div>
+      ) : (
+        <QuestionCard
+          questionText={question.text}
+          guideText="증상을 설명해주세요."
+          time={formatQuestionTime(question.asked_at)}
+          onEdit={startEditQuestion}
+        />
+      )}
 
       <UtilityToolbar onReplayQuestion={() => speak(question.text)} />
 
@@ -201,9 +269,9 @@ export default function QuestionAnswerStep({
               <span className="text-sm font-medium">텍스트로 답변하기</span>
               <span className="text-[10px] text-slate-400">직접 입력할 수 있어요.</span>
             </button>
-            {/* 백엔드가 이 질문의 의도를 인식하지 못하면(question.supported === false) candidates가
-                빈 배열로 내려와 선택지 화면이 빈 채로 막히므로, 이 경우 선택지 버튼 자체를 숨깁니다. */}
-            {question.supported && (
+            {/* 선택지(카드)는 answer_mode가 CARD_SELECT인 질문(언제부터/얼마나/얼마나 자주/예-아니오)에만
+                제공됩니다. SIGN_REQUIRED 질문(부위/증상/병력 등)은 카드가 없어 이 버튼 자체를 숨깁니다. */}
+            {question.answer_mode === 'CARD_SELECT' && (
               <button
                 onClick={() => onAnswerWithChoice(question)}
                 className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"

@@ -1,7 +1,17 @@
 // TalkDoc_BE 응답 타입입니다. 백엔드가 Jackson SNAKE_CASE 전략으로 직렬화하므로
 // 필드명이 그대로 snake_case인 점에 유의하세요 (프론트 컨벤션과 다름).
 
-export type Intent = 'BODY_LOCATION' | 'SYMPTOM' | 'HISTORY_STATE' | 'OTHER'
+export type Intent =
+  | 'BODY_LOCATION'
+  | 'SYMPTOM'
+  | 'HISTORY_STATE'
+  | 'DURATION'
+  | 'SEVERITY'
+  | 'FREQUENCY'
+  | 'YES_NO'
+  | 'OTHER'
+
+export type AnswerMode = 'SIGN_REQUIRED' | 'CARD_SELECT'
 
 export interface CreateSessionResponse {
   session_id: string
@@ -18,7 +28,11 @@ export interface QuestionResponse {
   intents: Intent[]
   candidates: string[]
   supported: boolean
+  answer_mode: AnswerMode
+  card_options: string[]
   asked_at: string
+  version: number
+  updated_at: string | null
 }
 
 export interface RecognizedSign {
@@ -30,6 +44,8 @@ export interface RecognizedSign {
 
 export interface SignResponse {
   question_id: string | null
+  question_version: number | null
+  recognition_id: string | null
   intents: Intent[]
   candidates: string[]
   sign: RecognizedSign
@@ -43,8 +59,18 @@ export interface SignResponse {
 
 export interface PreviewResponse {
   question_id: string
+  question_version: number
   labels: string[]
   answer: string
+  answer_id: string
+  version: number
+  recognition_ids: string[] | null
+}
+
+export interface PendingEdit {
+  answer: string
+  proposed_by: 'DOCTOR' | 'PATIENT'
+  proposed_at: string
 }
 
 export interface Conversation {
@@ -55,6 +81,11 @@ export interface Conversation {
   signs: string[]
   answer: string
   confirmed_at: string
+  question_version: number
+  version: number
+  edited_by: 'DOCTOR' | 'PATIENT' | null
+  edited_at: string | null
+  pending_edit: PendingEdit | null
 }
 
 export interface SessionDetailResponse {

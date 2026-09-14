@@ -132,7 +132,9 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
   // 실패하면(네트워크 오류 등) 화면에 머물면서 에러를 보여주고, 같은 버튼으로 재시도할 수 있게 합니다.
   const deliverAnswer = async () => {
-    const labels = answerSource === 'sign-camera' || answerSource === 'choice-select' ? answerLabels : []
+    // choice-select은 카드 문구(예: "오늘부터")를 그대로 쓰는 텍스트 답변이라 라벨이 없습니다
+    // (수어 어휘가 아니라서 라벨로 보내면 백엔드 유효성 검증에 걸립니다).
+    const labels = answerSource === 'sign-camera' ? answerLabels : []
     setDelivering(true)
     setDeliverError(null)
     try {
@@ -322,9 +324,9 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
             <ChoiceAnswerStep
               questionText={questionText}
               time={questionTime}
-              candidates={question?.candidates ?? []}
-              onSubmit={(labels, answer) => {
-                setAnswerLabels(labels)
+              cardOptions={question?.card_options ?? []}
+              onSubmit={(answer) => {
+                setAnswerLabels([])
                 setAnswerText(answer)
                 setStep('result-confirm')
               }}

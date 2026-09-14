@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Volume2, Pencil, Check, X } from 'lucide-react'
+import { Send, Volume2, Pencil, Check, X, Mic } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import HelpTipBox from './HelpTipBox'
 import type { QuestionRecord } from '../../types/conversation'
@@ -146,14 +146,20 @@ export default function DoctorAnswerStep({
         </div>
       </div>
 
-      <button
-        onClick={onNextQuestion}
-        className="flex-1 w-full flex flex-col items-center justify-center text-center gap-2 py-2"
-        title="눌러서 다음 질문 받기"
-      >
+      <div className="flex-1 w-full flex flex-col items-center justify-center text-center gap-2 py-2">
         <img src={doctorSolo} alt="" className="w-28" />
         <p className="text-base font-bold text-slate-900">의료진의 다음 질문을 기다리는 중이에요.</p>
-        <p className="text-xs text-slate-400">질문이 오면 화면에 자동으로 표시됩니다.</p>
+        <p className="text-xs text-slate-400">
+          같은 폰을 의료진에게 건네면 마이크로 바로 다음 질문을 시작할 수 있어요.
+        </p>
+      </div>
+
+      <button
+        onClick={onNextQuestion}
+        className="w-full flex items-center justify-center gap-1.5 py-4 rounded-full bg-gradient-to-r from-teal-600 to-teal-700 text-white font-semibold shadow-lg shadow-teal-700/25"
+      >
+        <Mic size={16} />
+        다음 질문 받기
       </button>
 
       <div className="flex gap-2">

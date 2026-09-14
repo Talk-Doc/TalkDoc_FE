@@ -66,10 +66,17 @@ export default function ResultConfirmStep({
 
         {answerSource === 'choice-select' && (
           <>
-            <p className="text-xs font-semibold text-slate-500 mb-2">선택지</p>
-            <div className="w-1/3 flex flex-col items-center gap-1.5 rounded-xl border-2 border-teal-500 bg-white p-3">
-              <Calendar size={18} className="text-teal-600" />
-              <span className="text-xs font-medium text-slate-700 text-center">{answerText}</span>
+            <p className="text-xs font-semibold text-slate-500 mb-2">선택한 항목</p>
+            <div className="flex flex-wrap gap-2">
+              {recognizedWords.map((word, i) => (
+                <div
+                  key={`${word}-${i}`}
+                  className="flex flex-col items-center gap-1.5 rounded-xl border-2 border-teal-500 bg-white p-3 w-[calc(33%-6px)]"
+                >
+                  <Calendar size={18} className="text-teal-600" />
+                  <span className="text-xs font-medium text-slate-700 text-center">{word}</span>
+                </div>
+              ))}
             </div>
           </>
         )}

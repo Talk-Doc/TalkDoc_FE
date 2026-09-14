@@ -100,7 +100,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [question, setQuestion] = useState<QuestionResponse | null>(null)
   const [answerText, setAnswerText] = useState('')
   const [answerSource, setAnswerSource] = useState<AnswerSource>('sign-camera')
-  const [signLabels, setSignLabels] = useState<string[]>([])
+  const [answerLabels, setAnswerLabels] = useState<string[]>([])
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
@@ -132,7 +132,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   // 결과 확인 화면의 [의료진에게 전달하기]: 실제로 답변을 확정하고 대화 기록에 추가합니다.
   // 실패하면(네트워크 오류 등) 화면에 머물면서 에러를 보여주고, 같은 버튼으로 재시도할 수 있게 합니다.
   const deliverAnswer = async () => {
-    const labels = answerSource === 'sign-camera' ? signLabels : []
+    const labels = answerSource === 'sign-camera' || answerSource === 'choice-select' ? answerLabels : []
     setDelivering(true)
     setDeliverError(null)
     try {
@@ -201,7 +201,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
         <div className="relative flex-1 flex flex-col">
           <AnalyzingPreview
             session={session}
-            labels={signLabels}
+            labels={answerLabels}
             onSuccess={(answer) => {
               setAnswerText(answer)
               setStep('result-confirm')
@@ -269,7 +269,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               questionText={questionText}
               time={questionTime}
               onSuccess={(labels) => {
-                setSignLabels(labels)
+                setAnswerLabels(labels)
                 setStep('analyzing')
               }}
               onFailure={() => setStep('recognition-failed')}
@@ -282,7 +282,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               time={questionTime}
               answerText={answerText}
               answerSource={answerSource}
-              recognizedWords={signLabels}
+              recognizedWords={answerLabels}
               submitting={delivering}
               error={deliverError}
               onConfirm={deliverAnswer}
@@ -323,8 +323,9 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
               questionText={questionText}
               time={questionTime}
               candidates={question?.candidates ?? []}
-              onSubmit={(choice) => {
-                setAnswerText(choice)
+              onSubmit={(labels, answer) => {
+                setAnswerLabels(labels)
+                setAnswerText(answer)
                 setStep('result-confirm')
               }}
             />

@@ -38,6 +38,26 @@ export default function SignCameraStep({
     if (videoRef.current) videoRef.current.srcObject = recorder.stream
   }, [recorder.stream])
 
+  // 이 화면에 들어오자마자 카메라 미리보기를 켜서, [답변 촬영 시작하기]를 누르기 전에도
+  // 환자가 자기 모습이 어떻게 잡히는지 바로 볼 수 있게 합니다. 실제 녹화는 버튼을 눌러야 시작됩니다.
+  useEffect(() => {
+    let cancelled = false
+    recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
+      // StrictMode에서 mount→cleanup→mount가 겹칠 때, 이미 정리된(cancelled) 요청이
+      // 나중에 도착해서 켜진 카메라를 다시 살려두는 걸 막습니다.
+      if (cancelled) {
+        recorder.stopPreview()
+        return
+      }
+      if (!ok) setError(recorder.error)
+    })
+    return () => {
+      cancelled = true
+      recorder.stopPreview()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const startRecording = async () => {
     setError(null)
     const ok = await recorder.start({ video: { facingMode: 'user' }, audio: false })

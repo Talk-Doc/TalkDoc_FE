@@ -201,14 +201,18 @@ export default function QuestionAnswerStep({
               <span className="text-sm font-medium">텍스트로 답변하기</span>
               <span className="text-[10px] text-slate-400">직접 입력할 수 있어요.</span>
             </button>
-            <button
-              onClick={() => onAnswerWithChoice(question)}
-              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
-            >
-              <ListChecks size={16} />
-              <span className="text-sm font-medium">선택지로 답변하기</span>
-              <span className="text-[10px] text-slate-400">제공되는 보기 중 선택해요.</span>
-            </button>
+            {/* 백엔드가 이 질문의 의도를 인식하지 못하면(question.supported === false) candidates가
+                빈 배열로 내려와 선택지 화면이 빈 채로 막히므로, 이 경우 선택지 버튼 자체를 숨깁니다. */}
+            {question.supported && (
+              <button
+                onClick={() => onAnswerWithChoice(question)}
+                className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border border-slate-200 text-slate-600"
+              >
+                <ListChecks size={16} />
+                <span className="text-sm font-medium">선택지로 답변하기</span>
+                <span className="text-[10px] text-slate-400">제공되는 보기 중 선택해요.</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

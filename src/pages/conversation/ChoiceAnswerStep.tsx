@@ -52,23 +52,31 @@ export default function ChoiceAnswerStep({
         time={time}
       />
 
-      <div className="grid grid-cols-3 gap-2">
-        {candidates.map((option) => {
-          const active = selected.includes(option)
-          return (
-            <button
-              key={option}
-              onClick={() => toggle(option)}
-              className={`flex flex-col items-center gap-1.5 rounded-xl p-3 border-2 ${
-                active ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-100 text-slate-600'
-              }`}
-            >
-              <Calendar size={18} className={active ? 'text-teal-600' : 'text-slate-400'} />
-              <span className="text-xs font-medium text-center leading-tight">{option}</span>
-            </button>
-          )
-        })}
-      </div>
+      {candidates.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
+          <AlertCircle size={24} className="text-slate-300" />
+          <p className="text-sm font-semibold text-slate-500">이 질문엔 제공되는 선택지가 없어요.</p>
+          <p className="text-xs text-slate-400">위로 돌아가서 수어나 텍스트로 답변해주세요.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {candidates.map((option) => {
+            const active = selected.includes(option)
+            return (
+              <button
+                key={option}
+                onClick={() => toggle(option)}
+                className={`flex flex-col items-center gap-1.5 rounded-xl p-3 border-2 ${
+                  active ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-100 text-slate-600'
+                }`}
+              >
+                <Calendar size={18} className={active ? 'text-teal-600' : 'text-slate-400'} />
+                <span className="text-xs font-medium text-center leading-tight">{option}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">

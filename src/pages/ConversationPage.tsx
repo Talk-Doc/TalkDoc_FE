@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PhoneScreen from '../components/PhoneScreen'
 import TalkDacLogo from '../components/TalkDacLogo'
@@ -43,8 +43,14 @@ export default function ConversationPage() {
   const navigate = useNavigate()
   const [session, setSession] = useState<SessionInfo | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
+  // StrictMode(개발 모드)는 마운트를 일부러 두 번 실행해 effect가 정리(cleanup)를 잘 하는지
+  // 검증합니다. 세션 생성은 멱등하지 않은(POST) 호출이라 두 번 나가면 세션이 하나 더 만들어져
+  // 낭비이므로, 같은 컴포넌트 인스턴스 안에서 유지되는 ref로 한 번만 호출되게 막습니다.
+  const sessionRequested = useRef(false)
 
   useEffect(() => {
+    if (sessionRequested.current) return
+    sessionRequested.current = true
     createSession()
       .then(setSession)
       .catch((err) =>
@@ -366,6 +372,11 @@ function AnalyzingPreview({
   onFailure: () => void
   onBack: () => void
 }) {
+  // 세션 생성과 달리 preview는 백엔드가 아무것도 저장하지 않는 순수 조회라서
+  // (README: "저장하지 않습니다"), StrictMode가 개발 모드에서 두 번 호출해도 무해합니다.
+  // ref로 막으면 StrictMode의 즉시 정리(cleanup)가 첫 호출의 cancelled만 true로 만들어
+  // 두 번째(생략된) 호출이 결과를 받을 수 없게 되어 화면이 멈추므로, 표준적인
+  // "마지막 호출만 반영" ignore 플래그 패턴을 그대로 씁니다.
   useEffect(() => {
     let cancelled = false
     previewAnswer(session.session_id, session.patient_token, labels)

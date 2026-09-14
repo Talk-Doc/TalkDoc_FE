@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Send, Volume2, Pencil, Check, X } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import HelpTipBox from './HelpTipBox'
@@ -38,11 +38,15 @@ export default function DoctorAnswerStep({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [savingId, setSavingId] = useState<string | null>(null)
+  // StrictMode의 이중 마운트에도 자동 재생이 한 번만 일어나도록 막습니다.
+  const played = useRef(false)
 
   // 이 화면에 들어올 때 방금 전달된 답변을 한 번 음성으로 읽어줍니다.
   // (안내 문구 "전달된 내용이 음성으로도 재생되었습니다"가 가리키는 재생)
   useEffect(() => {
-    if (lastRecord) playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)
+    if (played.current || !lastRecord) return
+    played.current = true
+    playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

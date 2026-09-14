@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local Redis dump from running the backend for dev/testing
+dump.rdb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

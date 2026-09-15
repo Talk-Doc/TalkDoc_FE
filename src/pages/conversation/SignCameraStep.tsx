@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil } from 'lucide-react'
 import QuestionCard from './QuestionCard'
-import { useMediaRecorder } from '../../hooks/useMediaRecorder'
+import { useMediaRecorder, MEDIA_PERMISSION_ERROR } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
 import { postSign } from '../../api/sign'
 import { ApiError } from '../../api/client'
@@ -45,13 +45,10 @@ export default function SignCameraStep({
   useEffect(() => {
     let cancelled = false
     recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
-      // StrictMode에서 mount→cleanup→mount가 겹칠 때, 이미 정리된(cancelled) 요청이
-      // 나중에 도착해서 켜진 카메라를 다시 살려두는 걸 막습니다.
-      if (cancelled) {
-        recorder.stopPreview()
-        return
-      }
-      if (!ok) setError(recorder.error)
+      // 이 컴포넌트가 이미 정리(cleanup)된 뒤에 도착한 응답이면, 상태 업데이트를 하지 않습니다.
+      // (스트림 자체는 useMediaRecorder가 요청 번호로 알아서 정리합니다.)
+      if (cancelled) return
+      if (!ok) setError(MEDIA_PERMISSION_ERROR)
     })
     return () => {
       cancelled = true

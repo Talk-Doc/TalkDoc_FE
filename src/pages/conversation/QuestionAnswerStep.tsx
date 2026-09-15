@@ -91,8 +91,15 @@ export default function QuestionAnswerStep({
     try {
       const question = await postQuestionAudio(sessionId, doctorToken, audioBlob)
       setQuestion(question)
-      setPhase('method-select')
       if (voiceGuide) speak(question.text)
+      // 백엔드가 이미 이 질문을 선택지로 답할 수 있는 유형(CARD_SELECT)으로 분류해줬으면,
+      // 굳이 "답변 방법 선택하기"에서 한 번 더 고르게 하지 않고 바로 선택지 화면으로 넘어갑니다.
+      // 수어/텍스트로 바꾸고 싶으면 선택지 화면에서 뒤로가기로 여기(방법 선택)에 돌아올 수 있어요.
+      if (question.answer_mode === 'CARD_SELECT') {
+        onAnswerWithChoice(question)
+      } else {
+        setPhase('method-select')
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
       setPhase('mic-waiting')

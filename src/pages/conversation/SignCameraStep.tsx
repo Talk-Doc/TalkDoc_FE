@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check } from 'lucide-react'
+import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil } from 'lucide-react'
 import QuestionCard from './QuestionCard'
-import { useMediaRecorder } from '../../hooks/useMediaRecorder'
+import { useMediaRecorder, MEDIA_PERMISSION_ERROR } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
 import { postSign } from '../../api/sign'
 import { ApiError } from '../../api/client'
@@ -30,6 +30,8 @@ export default function SignCameraStep({
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
   const recorder = useMediaRecorder()
   const videoRef = useRef<HTMLVideoElement>(null)
   const startedAtRef = useRef(0)
@@ -37,6 +39,23 @@ export default function SignCameraStep({
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = recorder.stream
   }, [recorder.stream])
+
+  // 이 화면에 들어오자마자 카메라 미리보기를 켜서, [답변 촬영 시작하기]를 누르기 전에도
+  // 환자가 자기 모습이 어떻게 잡히는지 바로 볼 수 있게 합니다. 실제 녹화는 버튼을 눌러야 시작됩니다.
+  useEffect(() => {
+    let cancelled = false
+    recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
+      // 이 컴포넌트가 이미 정리(cleanup)된 뒤에 도착한 응답이면, 상태 업데이트를 하지 않습니다.
+      // (스트림 자체는 useMediaRecorder가 요청 번호로 알아서 정리합니다.)
+      if (cancelled) return
+      if (!ok) setError(MEDIA_PERMISSION_ERROR)
+    })
+    return () => {
+      cancelled = true
+      recorder.stopPreview()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const startRecording = async () => {
     setError(null)
@@ -77,21 +96,75 @@ export default function SignCameraStep({
     else onFailure()
   }
 
+  // 수어 인식이 잘못됐을 수 있으니(예: "배"를 "네"로 오인식), 촬영을 다시 하지 않고도
+  // 단어를 직접 고치거나 지울 수 있게 합니다.
+  const startEditWord = (i: number) => {
+    setEditingIndex(i)
+    setEditValue(words[i])
+  }
+
+  const saveEditWord = () => {
+    if (editingIndex === null) return
+    const value = editValue.trim()
+    const index = editingIndex
+    setWords((prev) => (value ? prev.map((w, i) => (i === index ? value : w)) : prev.filter((_, i) => i !== index)))
+    setEditingIndex(null)
+  }
+
+  const removeWord = (i: number) => {
+    setWords((prev) => prev.filter((_, idx) => idx !== i))
+    if (editingIndex === i) setEditingIndex(null)
+  }
+
   return (
     <>
       <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       {words.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {words.map((word, i) => (
-            <span
-              key={`${word}-${i}`}
-              className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2.5 py-1 text-xs font-semibold text-teal-700"
-            >
-              <Check size={11} />
-              {word}
-            </span>
-          ))}
+          {words.map((word, i) =>
+            editingIndex === i ? (
+              <span
+                key={`edit-${i}`}
+                className="inline-flex items-center gap-1 rounded-full bg-white border-2 border-teal-500 pl-2.5 pr-1 py-1"
+              >
+                <input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEditWord()
+                    if (e.key === 'Escape') setEditingIndex(null)
+                  }}
+                  autoFocus
+                  className="w-16 text-xs font-semibold text-teal-700 outline-none"
+                />
+                <button
+                  onClick={saveEditWord}
+                  aria-label={`${word} 단어 수정 완료`}
+                  className="w-5 h-5 rounded-full bg-teal-500 text-white flex items-center justify-center shrink-0"
+                >
+                  <Check size={11} />
+                </button>
+              </span>
+            ) : (
+              <span
+                key={`${word}-${i}`}
+                className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 pl-2.5 pr-1 py-1 text-xs font-semibold text-teal-700"
+              >
+                <button onClick={() => startEditWord(i)} className="inline-flex items-center gap-1">
+                  {word}
+                  <Pencil size={10} className="text-teal-400" />
+                </button>
+                <button
+                  onClick={() => removeWord(i)}
+                  aria-label={`${word} 단어 삭제`}
+                  className="w-4 h-4 rounded-full text-teal-500 flex items-center justify-center shrink-0"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ),
+          )}
         </div>
       )}
 

@@ -32,63 +32,66 @@
 }
 
 /* 접근성: 고대비 모드
-   filter(invert)는 화면 전체를 뒤집기만 해서 명암비가 오히려 기준(4.5:1) 밑으로 떨어지는
-   조합이 생길 수 있어, 검증된 검정 배경 + 흰 글자/테두리 + 노란 강조색 팔레트로 직접 지정합니다. */
+   검정 배경으로 뒤집으면 다크모드처럼 보여서 오히려 낯설고 예쁘지 않다는 피드백이 있어,
+   원래의 밝은(흰) 배경은 그대로 두고 대비가 낮은 글자색만 훨씬 진하게 눌러줍니다. */
 .a11y-scope[data-high-contrast] {
-  background-color: #000 !important;
+  color: #0f172a !important;
 }
-.a11y-scope[data-high-contrast] .bg-white,
-.a11y-scope[data-high-contrast] .bg-slate-50,
-.a11y-scope[data-high-contrast] .bg-slate-100,
-.a11y-scope[data-high-contrast] .bg-slate-200,
-.a11y-scope[data-high-contrast] .bg-slate-900,
-.a11y-scope[data-high-contrast] .bg-teal-50,
-.a11y-scope[data-high-contrast] .bg-emerald-50 {
-  background-color: #000 !important;
-}
-.a11y-scope[data-high-contrast] .bg-teal-400,
-.a11y-scope[data-high-contrast] .bg-teal-700,
-.a11y-scope[data-high-contrast] .bg-emerald-500,
-.a11y-scope[data-high-contrast] .bg-red-500 {
-  background-color: #fde047 !important;
-  color: #000 !important;
-}
-.a11y-scope[data-high-contrast] .bg-teal-400 *,
-.a11y-scope[data-high-contrast] .bg-teal-700 *,
-.a11y-scope[data-high-contrast] .bg-emerald-500 *,
-.a11y-scope[data-high-contrast] .bg-red-500 * {
-  color: #000 !important;
-}
+/* 회색 계열 글씨(안내문 등)는 옅을수록 진한 검정에 가깝게 */
 .a11y-scope[data-high-contrast] .text-slate-300,
 .a11y-scope[data-high-contrast] .text-slate-400,
 .a11y-scope[data-high-contrast] .text-slate-500,
 .a11y-scope[data-high-contrast] .text-slate-600,
-.a11y-scope[data-high-contrast] .text-slate-900,
+.a11y-scope[data-high-contrast] .text-slate-700 {
+  color: #0f172a !important;
+}
+.a11y-scope[data-high-contrast] .text-slate-900 {
+  color: #000 !important;
+}
+/* 청록/에메랄드/빨강/주황 포인트 색은 톤은 유지하되 흰 배경 위에서도 또렷하게 더 짙은 값으로 */
+.a11y-scope[data-high-contrast] .text-teal-300,
+.a11y-scope[data-high-contrast] .text-teal-400,
 .a11y-scope[data-high-contrast] .text-teal-500,
-.a11y-scope[data-high-contrast] .text-teal-600,
+.a11y-scope[data-high-contrast] .text-teal-600 {
+  color: #0f766e !important;
+}
 .a11y-scope[data-high-contrast] .text-teal-700,
-.a11y-scope[data-high-contrast] .text-teal-900,
+.a11y-scope[data-high-contrast] .text-teal-900 {
+  color: #042f2e !important;
+}
 .a11y-scope[data-high-contrast] .text-emerald-300,
 .a11y-scope[data-high-contrast] .text-emerald-400,
 .a11y-scope[data-high-contrast] .text-emerald-500,
-.a11y-scope[data-high-contrast] .text-emerald-600,
-.a11y-scope[data-high-contrast] .text-emerald-700,
-.a11y-scope[data-high-contrast] .text-emerald-900,
-.a11y-scope[data-high-contrast] .text-red-500 {
-  color: #fff !important;
+.a11y-scope[data-high-contrast] .text-emerald-600 {
+  color: #047857 !important;
 }
+.a11y-scope[data-high-contrast] .text-emerald-700,
+.a11y-scope[data-high-contrast] .text-emerald-900 {
+  color: #022c22 !important;
+}
+.a11y-scope[data-high-contrast] .text-red-500,
+.a11y-scope[data-high-contrast] .text-red-600 {
+  color: #b91c1c !important;
+}
+.a11y-scope[data-high-contrast] .text-amber-500 {
+  color: #b45309 !important;
+}
+/* 흰/밝은 배경 위 흰 글씨(색이 있는 배경의 버튼 등)는 원래도 대비가 충분하니 그대로 둡니다. */
+/* 옅은 테두리도 눈에 띄게 진하게 */
 .a11y-scope[data-high-contrast] .border-slate-100,
-.a11y-scope[data-high-contrast] .border-slate-200,
-.a11y-scope[data-high-contrast] .border-emerald-200,
-.a11y-scope[data-high-contrast] .border-emerald-500,
-.a11y-scope[data-high-contrast] .border-red-200,
+.a11y-scope[data-high-contrast] .border-slate-200 {
+  border-color: #334155 !important;
+}
+.a11y-scope[data-high-contrast] .border-teal-200,
+.a11y-scope[data-high-contrast] .border-teal-300,
 .a11y-scope[data-high-contrast] .border-teal-400,
-.a11y-scope[data-high-contrast] .border-teal-500,
-.a11y-scope[data-high-contrast] .border-teal-700 {
-  border-color: #fff !important;
+.a11y-scope[data-high-contrast] .border-teal-500 {
+  border-color: #0f766e !important;
+}
+.a11y-scope[data-high-contrast] .border-red-200 {
+  border-color: #b91c1c !important;
 }
 .a11y-scope[data-high-contrast] button:disabled {
-  background-color: #000 !important;
-  color: #888 !important;
-  border-color: #888 !important;
+  color: #475569 !important;
+  border-color: #94a3b8 !important;
 }

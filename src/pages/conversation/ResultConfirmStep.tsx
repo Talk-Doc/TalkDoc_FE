@@ -1,4 +1,4 @@
-import { Sparkles, Volume2, Pencil, Send, Calendar, AlertCircle } from 'lucide-react'
+import { Sparkles, Volume2, Pencil, Send, Calendar, AlertCircle, Check } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import HelpTipBox from './HelpTipBox'
 import { speak } from '../../utils/speech'
@@ -58,14 +58,15 @@ export default function ResultConfirmStep({
         {answerSource === 'sign-camera' && (
           <>
             <p className="text-xs font-semibold text-slate-500 mb-2">인식된 수어</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {recognizedWords.map((word, i) => (
-                <div key={`${word}-${i}`} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-white text-xs">
-                    {word}
-                  </div>
-                  <span className="text-xs font-medium text-slate-600">{word}</span>
-                </div>
+                <span
+                  key={`${word}-${i}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-white border border-teal-200 px-2.5 py-1 text-xs font-semibold text-teal-700"
+                >
+                  <Check size={11} className="text-teal-500" />
+                  {word}
+                </span>
               ))}
             </div>
           </>

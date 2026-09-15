@@ -37,23 +37,34 @@ export default function SignCameraStep({
   const startedAtRef = useRef(0)
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = recorder.stream
+    if (!videoRef.current) return
+    videoRef.current.srcObject = recorder.stream
+    // srcObject만 바꿔서는 일부 브라우저에서 자동재생이 안 붙는 경우가 있어, 명시적으로 재생을
+    // 시도합니다. 사용자 제스처 없이 호출될 수 있어 거부(reject)될 수 있는데, 이미 muted라
+    // 대부분 허용되고 설령 막혀도 화면이 깨지는 건 아니라 조용히 무시해도 됩니다.
+    if (recorder.stream) videoRef.current.play().catch(() => {})
   }, [recorder.stream])
 
   // 이 화면에 들어오자마자 카메라 미리보기를 켜서, [답변 촬영 시작하기]를 누르기 전에도
   // 환자가 자기 모습이 어떻게 잡히는지 바로 볼 수 있게 합니다. 실제 녹화는 버튼을 눌러야 시작됩니다.
+  // words/recording/submitting에도 의존해서, 촬영 중이 아닐 때 미리보기가 (기기 문제 등으로)
+  // 꺼져 있으면 자동으로 다시 켭니다 — 한 번 깨지면 계속 빈 화면으로 남지 않도록 하기 위함입니다.
   useEffect(() => {
+    if (recorder.stream || recording || submitting) return
     let cancelled = false
     recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
-      // 이 컴포넌트가 이미 정리(cleanup)된 뒤에 도착한 응답이면, 상태 업데이트를 하지 않습니다.
-      // (스트림 자체는 useMediaRecorder가 요청 번호로 알아서 정리합니다.)
       if (cancelled) return
       if (!ok) setError(MEDIA_PERMISSION_ERROR)
     })
     return () => {
       cancelled = true
-      recorder.stopPreview()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recorder.stream, recording, submitting])
+
+  // 화면을 완전히 떠날 때만 카메라를 실제로 끕니다.
+  useEffect(() => {
+    return () => recorder.stopPreview()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

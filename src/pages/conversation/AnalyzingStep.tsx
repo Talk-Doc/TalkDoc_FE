@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import TalkDacLogo from '../../components/TalkDacLogo'
 import patientWithPhone from '../../assets/illustrations/patient-with-phone.png'
 
@@ -22,10 +22,10 @@ export default function AnalyzingStep({ onBack }: { onBack: () => void }) {
 
       <button
         onClick={onBack}
-        className="w-full flex items-center justify-center gap-1.5 py-4 rounded-full bg-gradient-to-r from-teal-600 to-teal-700 text-white font-semibold shadow-lg shadow-teal-700/25"
+        className="w-full flex items-center justify-center gap-1.5 py-3.5 rounded-full border border-slate-200 text-slate-500 font-medium"
       >
+        <ChevronLeft size={18} />
         뒤로 가기
-        <ChevronRight size={18} />
       </button>
     </div>
   )

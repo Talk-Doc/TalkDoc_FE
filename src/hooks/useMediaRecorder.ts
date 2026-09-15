@@ -33,6 +33,18 @@ export function useMediaRecorder() {
       }
       streamRef.current = mediaStream
       previewOwnedRef.current = true
+      // 카메라 드라이버/브라우저가 트랙을 예기치 않게 끊는 경우(기기 분리, OS가 자원을 회수하는 등)를
+      // 대비해, 우리가 의도적으로 stopPreview()를 부른 게 아니라면 화면이 깨진 채로 남지 않도록
+      // 미리보기 상태를 정리해서 SignCameraStep이 다시 켤 수 있게 합니다.
+      mediaStream.getVideoTracks().forEach((track) => {
+        track.addEventListener('ended', () => {
+          if (streamRef.current === mediaStream && previewOwnedRef.current) {
+            streamRef.current = null
+            previewOwnedRef.current = false
+            setStream(null)
+          }
+        })
+      })
       setStream(mediaStream)
       return true
     } catch {

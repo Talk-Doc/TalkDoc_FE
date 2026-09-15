@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil } from 'lucide-react'
+import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil, RotateCcw } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import { useMediaRecorder, MEDIA_PERMISSION_ERROR } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
@@ -32,17 +32,44 @@ export default function SignCameraStep({
   const [error, setError] = useState<string | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editValue, setEditValue] = useState('')
+  // 스트림은 받았는데(카메라 권한/장치 자체는 정상) 실제 화면에 프레임이 안 들어오는 경우가 있습니다
+  // (다른 탭/앱이 카메라를 이미 쓰고 있거나, 드라이버 문제 등). 이럴 땐 <video>가 깨진 아이콘만
+  // 보여주고 조용히 멈춰버리는데, 사용자가 원인을 알 수 없으니 일정 시간 안에 첫 프레임이
+  // 안 들어오면 명확한 안내 + "다시 켜기" 버튼을 보여줍니다.
+  const [previewBroken, setPreviewBroken] = useState(false)
   const recorder = useMediaRecorder()
   const videoRef = useRef<HTMLVideoElement>(null)
   const startedAtRef = useRef(0)
 
   useEffect(() => {
-    if (!videoRef.current) return
-    videoRef.current.srcObject = recorder.stream
+    const video = videoRef.current
+    if (!video) return
+    video.srcObject = recorder.stream
+    if (!recorder.stream) {
+      setPreviewBroken(false)
+      return
+    }
+    setPreviewBroken(false)
     // srcObject만 바꿔서는 일부 브라우저에서 자동재생이 안 붙는 경우가 있어, 명시적으로 재생을
     // 시도합니다. 사용자 제스처 없이 호출될 수 있어 거부(reject)될 수 있는데, 이미 muted라
     // 대부분 허용되고 설령 막혀도 화면이 깨지는 건 아니라 조용히 무시해도 됩니다.
-    if (recorder.stream) videoRef.current.play().catch(() => {})
+    video.play().catch(() => {})
+
+    let receivedFrame = false
+    const markReady = () => {
+      receivedFrame = true
+    }
+    video.addEventListener('loadedmetadata', markReady)
+    video.addEventListener('playing', markReady)
+    const watchdog = setTimeout(() => {
+      if (!receivedFrame) setPreviewBroken(true)
+    }, 4000)
+
+    return () => {
+      video.removeEventListener('loadedmetadata', markReady)
+      video.removeEventListener('playing', markReady)
+      clearTimeout(watchdog)
+    }
   }, [recorder.stream])
 
   // 이 화면에 들어오자마자 카메라 미리보기를 켜서, [답변 촬영 시작하기]를 누르기 전에도
@@ -68,11 +95,23 @@ export default function SignCameraStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 미리보기가 깨졌을 때(previewBroken) 누르는 버튼: 지금 들고 있는(고장난) 스트림을 버립니다.
+  // 여기서 startPreview()를 직접 또 부르면, stopPreview()로 스트림이 null이 되는 순간 위
+  // 자동복구 effect도 동시에 startPreview()를 불러서 두 요청이 경합하게 됩니다(요청 번호로
+  // 서로를 무효화하다 보니, 이 함수가 부른 쪽이 진 것처럼 보여 실제로는 복구에 성공했는데도
+  // 잘못된 권한 에러가 뜰 수 있음) — 그래서 스트림을 비우기만 하고, 새로 여는 건 그 effect
+  // 하나에게만 맡깁니다.
+  const retryPreview = () => {
+    setError(null)
+    setPreviewBroken(false)
+    recorder.stopPreview()
+  }
+
   const startRecording = async () => {
     setError(null)
     const ok = await recorder.start({ video: { facingMode: 'user' }, audio: false })
     if (!ok) {
-      setError(recorder.error)
+      setError(MEDIA_PERMISSION_ERROR)
       return
     }
     startedAtRef.current = Date.now()
@@ -192,6 +231,11 @@ export default function SignCameraStep({
             <Camera size={16} className="relative text-white" />
           </span>
         </div>
+      ) : previewBroken ? (
+        <div className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+          카메라 화면을 불러오지 못했어요.
+        </div>
       ) : (
         <div className="flex items-center gap-1.5 text-xs text-teal-600 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block" />
@@ -214,6 +258,23 @@ export default function SignCameraStep({
           />
         ) : (
           <User size={72} className="text-slate-500" strokeWidth={1} />
+        )}
+        {recorder.stream && previewBroken && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-800/95 px-6 text-center">
+            <AlertCircle size={28} className="text-amber-400" />
+            <p className="text-sm text-white/90">
+              카메라 화면을 불러오지 못했어요.
+              <br />
+              다른 앱/탭에서 카메라를 쓰고 있는지 확인해주세요.
+            </p>
+            <button
+              onClick={retryPreview}
+              className="flex items-center gap-1.5 rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              <RotateCcw size={14} />
+              카메라 다시 켜기
+            </button>
+          </div>
         )}
         {recording ? (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">

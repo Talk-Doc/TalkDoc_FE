@@ -95,16 +95,16 @@ export default function SignCameraStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 미리보기가 깨졌을 때(previewBroken) 누르는 버튼: 지금 들고 있는(고장난) 스트림을 완전히
-  // 버리고 카메라를 처음부터 다시 엽니다. 단순 재바인딩이 아니라 getUserMedia를 새로 호출해야
-  // 카메라 드라이버 쪽 문제도 같이 회복될 가능성이 있습니다.
+  // 미리보기가 깨졌을 때(previewBroken) 누르는 버튼: 지금 들고 있는(고장난) 스트림을 버립니다.
+  // 여기서 startPreview()를 직접 또 부르면, stopPreview()로 스트림이 null이 되는 순간 위
+  // 자동복구 effect도 동시에 startPreview()를 불러서 두 요청이 경합하게 됩니다(요청 번호로
+  // 서로를 무효화하다 보니, 이 함수가 부른 쪽이 진 것처럼 보여 실제로는 복구에 성공했는데도
+  // 잘못된 권한 에러가 뜰 수 있음) — 그래서 스트림을 비우기만 하고, 새로 여는 건 그 effect
+  // 하나에게만 맡깁니다.
   const retryPreview = () => {
     setError(null)
     setPreviewBroken(false)
     recorder.stopPreview()
-    recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
-      if (!ok) setError(MEDIA_PERMISSION_ERROR)
-    })
   }
 
   const startRecording = async () => {

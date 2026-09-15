@@ -14,6 +14,7 @@ import {
   Send,
 } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
+import { useAccessibility } from '../context/AccessibilityContext'
 
 const FLOW_STEPS = [
   { icon: Mic, title: '의료진이 질문해요', body: '의료진이 마이크 버튼을 눌러 음성으로 질문하면, 화면에 텍스트로 표시돼요.' },
@@ -34,14 +35,17 @@ const SIGN_TIPS = [
 ]
 
 const CONVENIENCE = [
-  { icon: CaseSensitive, title: '글자 크게 보기', body: '화면 전체 글자 크기를 키워서 더 잘 보이게 해요.' },
-  { icon: CircleDashed, title: '고대비 모드', body: '색 대비를 높여서 화면을 더 또렷하게 봐요.' },
-]
+  { key: 'largeText', icon: CaseSensitive, title: '글자 크게 보기', body: '화면 전체 글자 크기를 키워서 더 잘 보이게 해요.' },
+  { key: 'highContrast', icon: CircleDashed, title: '고대비 모드', body: '색 대비를 높여서 화면을 더 또렷하게 봐요.' },
+] as const
 
 // 랜딩/대기 화면의 "가이드 보기"를 누르면 오는 사용법 안내 화면입니다.
 // 실제 대화 없이도 앱이 어떻게 동작하는지 미리 훑어볼 수 있게 해줍니다.
 export default function GuidePage() {
   const navigate = useNavigate()
+  const { largeText, highContrast, toggleLargeText, toggleHighContrast } = useAccessibility()
+  const CONVENIENCE_TOGGLE = { largeText: toggleLargeText, highContrast: toggleHighContrast } as const
+  const CONVENIENCE_ACTIVE = { largeText, highContrast } as const
 
   return (
     <PhoneScreen>
@@ -112,17 +116,38 @@ export default function GuidePage() {
         <div>
           <p className="text-xs font-semibold text-slate-400 mb-2">더 편하게 이용하기</p>
           <div className="flex flex-col gap-2">
-            {CONVENIENCE.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-2xl border border-slate-100 p-3.5 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 text-slate-500">
-                  <Icon size={16} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{title}</p>
-                  <p className="text-xs text-slate-400 leading-relaxed mt-0.5">{body}</p>
-                </div>
-              </div>
-            ))}
+            {CONVENIENCE.map(({ key, icon: Icon, title, body }) => {
+              const active = CONVENIENCE_ACTIVE[key]
+              return (
+                <button
+                  key={key}
+                  onClick={CONVENIENCE_TOGGLE[key]}
+                  aria-pressed={active}
+                  className={`text-left rounded-2xl border p-3.5 flex items-start gap-3 transition-colors ${
+                    active
+                      ? 'border-teal-500 bg-teal-50'
+                      : 'border-slate-100 hover:border-teal-200 hover:bg-teal-50/50'
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      active ? 'bg-teal-600 text-white' : 'bg-slate-50 text-slate-500'
+                    }`}
+                  >
+                    <Icon size={16} />
+                  </div>
+                  <div>
+                    <p className={`text-sm font-semibold ${active ? 'text-teal-900' : 'text-slate-900'}`}>
+                      {title}
+                      {active && <span className="ml-1.5 text-[10px] font-medium text-teal-600">사용 중</span>}
+                    </p>
+                    <p className={`text-xs leading-relaxed mt-0.5 ${active ? 'text-teal-600' : 'text-slate-400'}`}>
+                      {body}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 

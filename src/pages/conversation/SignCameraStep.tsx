@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check } from 'lucide-react'
+import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil } from 'lucide-react'
 import QuestionCard from './QuestionCard'
 import { useMediaRecorder } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
@@ -30,6 +30,8 @@ export default function SignCameraStep({
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
   const recorder = useMediaRecorder()
   const videoRef = useRef<HTMLVideoElement>(null)
   const startedAtRef = useRef(0)
@@ -97,21 +99,75 @@ export default function SignCameraStep({
     else onFailure()
   }
 
+  // 수어 인식이 잘못됐을 수 있으니(예: "배"를 "네"로 오인식), 촬영을 다시 하지 않고도
+  // 단어를 직접 고치거나 지울 수 있게 합니다.
+  const startEditWord = (i: number) => {
+    setEditingIndex(i)
+    setEditValue(words[i])
+  }
+
+  const saveEditWord = () => {
+    if (editingIndex === null) return
+    const value = editValue.trim()
+    const index = editingIndex
+    setWords((prev) => (value ? prev.map((w, i) => (i === index ? value : w)) : prev.filter((_, i) => i !== index)))
+    setEditingIndex(null)
+  }
+
+  const removeWord = (i: number) => {
+    setWords((prev) => prev.filter((_, idx) => idx !== i))
+    if (editingIndex === i) setEditingIndex(null)
+  }
+
   return (
     <>
       <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
 
       {words.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {words.map((word, i) => (
-            <span
-              key={`${word}-${i}`}
-              className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2.5 py-1 text-xs font-semibold text-teal-700"
-            >
-              <Check size={11} />
-              {word}
-            </span>
-          ))}
+          {words.map((word, i) =>
+            editingIndex === i ? (
+              <span
+                key={`edit-${i}`}
+                className="inline-flex items-center gap-1 rounded-full bg-white border-2 border-teal-500 pl-2.5 pr-1 py-1"
+              >
+                <input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEditWord()
+                    if (e.key === 'Escape') setEditingIndex(null)
+                  }}
+                  autoFocus
+                  className="w-16 text-xs font-semibold text-teal-700 outline-none"
+                />
+                <button
+                  onClick={saveEditWord}
+                  aria-label={`${word} 단어 수정 완료`}
+                  className="w-5 h-5 rounded-full bg-teal-500 text-white flex items-center justify-center shrink-0"
+                >
+                  <Check size={11} />
+                </button>
+              </span>
+            ) : (
+              <span
+                key={`${word}-${i}`}
+                className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 pl-2.5 pr-1 py-1 text-xs font-semibold text-teal-700"
+              >
+                <button onClick={() => startEditWord(i)} className="inline-flex items-center gap-1">
+                  {word}
+                  <Pencil size={10} className="text-teal-400" />
+                </button>
+                <button
+                  onClick={() => removeWord(i)}
+                  aria-label={`${word} 단어 삭제`}
+                  className="w-4 h-4 rounded-full text-teal-500 flex items-center justify-center shrink-0"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ),
+          )}
         </div>
       )}
 

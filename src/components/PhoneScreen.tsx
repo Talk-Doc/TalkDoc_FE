@@ -9,8 +9,13 @@ import { useAccessibility } from '../context/AccessibilityContext'
 // 카드가 어느 지점부터 더 안 커지거나(높이에 막혀서) 억지로 좁게 유지되는 문제가
 // 있었습니다. 데스크톱에서는 폰 모양을 그대로 유지할 필요는 없고, 화면에 맞게 비율이
 // 자연스럽게 넓어지는 게 맞다는 방향으로 정리해서 — 폭과 높이를 각각 독립적으로
-// (`clamp`) 화면 크기에 비례해 키웁니다. 그 결과 비율은 화면 크기에 따라 자유롭게
-// 달라지고, 항상 폭이 커지는 만큼 실제로 카드도 커집니다.
+// 화면 크기에 비례해 키웁니다.
+//
+// "최소값 + vw%" 형태의 단순 clamp는 최소값에 도달하는 지점이 의도한 시작 지점(640px)
+// 보다 훨씬 뒤(약 1412px)라서, 그 사이 구간에서는 화면을 늘려도 전혀 안 커지는 "정체
+// 구간"이 생겼습니다. 그래서 지금은 "640px 폭일 때 480px, 1920px 폭일 때 640px"처럼
+// 두 지점을 직접 잇는 선형 보간(linear interpolation, calc(최소값 + 기울기 * 100vw))
+// 공식을 써서, 640px를 넘는 순간부터 1920px까지 끊김 없이 계속 자라도록 했습니다.
 // data-large-text / data-high-contrast 속성은 index.css의 접근성 스타일과 연결됩니다.
 export default function PhoneScreen({ children }: { children: ReactNode }) {
   const { largeText, highContrast } = useAccessibility()
@@ -20,7 +25,7 @@ export default function PhoneScreen({ children }: { children: ReactNode }) {
       <div
         data-large-text={largeText || undefined}
         data-high-contrast={highContrast || undefined}
-        className="a11y-scope w-full h-full min-h-screen sm:min-h-0 sm:h-[clamp(700px,84vh,900px)] sm:w-[clamp(480px,34vw,640px)] bg-white sm:rounded-3xl sm:shadow-lg flex flex-col p-5 sm:p-6 lg:p-8 overflow-y-auto transition-[width,height] duration-200 ease-out"
+        className="a11y-scope w-full h-full min-h-screen sm:min-h-0 sm:h-[clamp(700px,500px_+_37vh,900px)] sm:w-[clamp(480px,400px_+_12.5vw,640px)] bg-white sm:rounded-3xl sm:shadow-lg flex flex-col p-5 sm:p-6 lg:p-8 overflow-y-auto transition-[width,height] duration-200 ease-out"
       >
         {children}
       </div>

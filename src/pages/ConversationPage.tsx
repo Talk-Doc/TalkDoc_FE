@@ -253,11 +253,12 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   }
 
   return (
-    <PhoneScreen wide={step === 'sign-camera'}>
+    <PhoneScreen wide>
       <div className="relative flex-1 flex flex-col">
         <ConversationScreenShell
           activeIndex={activeIndex}
           phaseLabel={phaseLabel}
+          desktopFullWidth={step === 'sign-camera'}
           onRequestEnd={() => setShowEndConfirm(true)}
           onBack={(() => {
             switch (step) {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Calendar, Check, AlertCircle } from 'lucide-react'
 import QuestionCard from './QuestionCard'
+import { useDesktopMode } from '../../context/DesktopModeContext'
 
 // answer_mode가 CARD_SELECT인 질문에서만 뜨는 화면입니다. cardOptions는 서로 배타적인
 // 미리 정해둔 문구(예: "오늘부터"/"어제부터")라 수어 어휘가 아니고, 하나만 고르는 게 맞습니다.
@@ -18,6 +19,7 @@ export default function ChoiceAnswerStep({
   onSubmit: (answerText: string) => void
 }) {
   const [selected, setSelected] = useState<string | null>(null)
+  const { desktopMode } = useDesktopMode()
 
   return (
     <>
@@ -34,7 +36,7 @@ export default function ChoiceAnswerStep({
           <p className="text-xs text-slate-400">위로 돌아가서 수어나 텍스트로 답변해주세요.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className={`grid gap-2 ${desktopMode ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {cardOptions.map((option) => {
             const active = selected === option
             return (

@@ -1,10 +1,9 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 
 // "데스크톱 환경에서 체험하기"를 켜면, PhoneScreen이 작은 폰 카드 대신 화면에 맞는
-// 넓은 데스크톱 레이아웃으로 렌더링합니다. 새로고침해도 유지되도록 localStorage에
-// 저장해두고, 마운트 시 그 값으로 초기화합니다.
-const STORAGE_KEY = 'talkdoc:desktopMode'
-
+// 넓은 데스크톱 레이아웃으로 렌더링합니다. 처음 접속(또는 새로고침)했을 땐 항상
+// 기본 폰 화면으로 보여야 해서 localStorage에 저장하지 않고, 매번 false로 시작합니다.
+// 토글 상태는 페이지를 이동해도(react-router 클라이언트 내비게이션) React state로 유지됩니다.
 interface DesktopModeState {
   desktopMode: boolean
   toggleDesktopMode: () => void
@@ -12,24 +11,8 @@ interface DesktopModeState {
 
 const DesktopModeContext = createContext<DesktopModeState | null>(null)
 
-function readInitial(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 export function DesktopModeProvider({ children }: { children: ReactNode }) {
-  const [desktopMode, setDesktopMode] = useState(readInitial)
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, desktopMode ? '1' : '0')
-    } catch {
-      // 저장 실패해도(시크릿 모드 등) 이번 세션 안에서는 정상 동작합니다.
-    }
-  }, [desktopMode])
+  const [desktopMode, setDesktopMode] = useState(false)
 
   return (
     <DesktopModeContext.Provider value={{ desktopMode, toggleDesktopMode: () => setDesktopMode((v) => !v) }}>

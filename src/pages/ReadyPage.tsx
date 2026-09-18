@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Lightbulb } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
 import TalkDacLogo from '../components/TalkDacLogo'
+import judgeGuideIcon from '../assets/guides/judge-guide-icon.png'
 import patientWithPhone from '../assets/illustrations/patient-with-phone.png'
 
 // 랜딩(스플래시) 화면에서 "대화 시작하기"를 누르면 오는 중간 확인 화면입니다.
@@ -47,8 +48,12 @@ export default function ReadyPage() {
           대화 시작하기
           <ChevronRight size={18} />
         </button>
-        <button onClick={() => navigate('/guide')} className="text-xs text-slate-400 py-1">
-          가이드 보기
+        <button
+          onClick={() => navigate('/guide')}
+          className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-teal-700 transition-colors hover:bg-teal-50"
+        >
+          <img src={judgeGuideIcon} alt="" className="h-4 w-6 object-contain" />
+          심사 체험 가이드 보기
         </button>
       </div>
     </PhoneScreen>

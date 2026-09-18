@@ -2,6 +2,7 @@ import { Sparkles, Volume2, Pencil, Send, Calendar, AlertCircle } from 'lucide-r
 import QuestionCard from './QuestionCard'
 import HelpTipBox from './HelpTipBox'
 import { speak } from '../../utils/speech'
+import { getSignDisplayLabel } from '../../guide/signLabels'
 
 export default function ResultConfirmStep({
   questionText,
@@ -62,9 +63,9 @@ export default function ResultConfirmStep({
               {recognizedWords.map((word, i) => (
                 <div key={`${word}-${i}`} className="flex-1 flex flex-col items-center gap-1.5">
                   <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-white text-xs">
-                    {word}
+                    {getSignDisplayLabel(word)}
                   </div>
-                  <span className="text-xs font-medium text-slate-600">{word}</span>
+                  <span className="text-xs font-medium text-slate-600">{getSignDisplayLabel(word)}</span>
                 </div>
               ))}
             </div>

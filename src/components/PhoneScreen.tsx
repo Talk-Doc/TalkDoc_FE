@@ -9,10 +9,15 @@ import { useDesktopMode } from '../context/DesktopModeContext'
 // "데스크톱 환경에서 체험하기"를 켜면(useDesktopMode, ReadyPage의 토글 버튼) 화면 폭/높이의
 // 92%를 차지하는 넓은 레이아웃으로 바뀝니다 — 심사처럼 데스크톱에서 편하게 크게 보고 싶을
 // 때를 위한 별도 모드이고, 기본값은 계속 작은 폰 카드입니다.
+//
+// 대부분의 화면(글+버튼 위주)은 넓혀봐야 버튼만 어색하게 늘어나므로 기본은 가운데 좁은
+// 컬럼(max-w-md)을 유지합니다. 다만 카메라 촬영처럼 넓은 공간을 실제로 활용할 수 있는
+// 화면은 wide를 켜서 카드 폭을 그대로 씁니다(그 안에서 내부 레이아웃을 직접 구성).
 // data-large-text / data-high-contrast 속성은 index.css의 접근성 스타일과 연결됩니다.
-export default function PhoneScreen({ children }: { children: ReactNode }) {
+export default function PhoneScreen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   const { largeText, highContrast } = useAccessibility()
   const { desktopMode } = useDesktopMode()
+  const useWideLayout = desktopMode && wide
 
   return (
     <div className={`min-h-screen bg-white sm:bg-slate-100 flex items-center justify-center ${desktopMode ? '' : 'sm:p-4'}`}>
@@ -23,7 +28,7 @@ export default function PhoneScreen({ children }: { children: ReactNode }) {
           desktopMode ? 'sm:w-[92vw] sm:h-[92vh] lg:p-8' : 'sm:w-full sm:max-w-sm sm:min-h-[640px]'
         }`}
       >
-        {desktopMode ? (
+        {desktopMode && !useWideLayout ? (
           // 넓은 카드에 내용을 그냥 늘려서 채우면 버튼/글씨만 어색하게 벌어지므로,
           // 가운데에 원래 폰 화면 비율의 좁은 컬럼을 두고 나머지는 여백으로 둡니다.
           <div className="w-full h-full flex flex-col mx-auto max-w-md">{children}</div>

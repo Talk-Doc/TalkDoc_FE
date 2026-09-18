@@ -253,7 +253,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   }
 
   return (
-    <PhoneScreen>
+    <PhoneScreen wide={step === 'sign-camera'}>
       <div className="relative flex-1 flex flex-col">
         <ConversationScreenShell
           activeIndex={activeIndex}

@@ -156,7 +156,7 @@ export default function QuestionAnswerStep({
         />
 
         {error && (
-          <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+          <div role="alert" className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-600">{error}</p>
           </div>
@@ -252,7 +252,7 @@ export default function QuestionAnswerStep({
         </div>
 
         {error ? (
-          <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+          <div role="alert" className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-600">{error}</p>
           </div>

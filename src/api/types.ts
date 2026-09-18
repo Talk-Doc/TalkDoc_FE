@@ -94,7 +94,11 @@ export interface SessionDetailResponse {
   status: 'ACTIVE' | 'CLOSED'
   created_at: string
   current_question?: QuestionResponse
+  question_version: number | null
   conversations: Conversation[]
+  // 환자(patient_token)로 조회할 때만 내려옵니다. 의료진 응답에는 없음(역할별 공개 범위).
+  drafts?: PreviewResponse[]
+  recognitions?: SignResponse[]
 }
 
 export interface SummaryResponse {

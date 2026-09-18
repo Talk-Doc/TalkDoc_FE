@@ -374,6 +374,10 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
                 setAnswerText(answer)
                 setStep('result-confirm')
               }}
+              onSwitchToText={() => {
+                setAnswerSource('text-input')
+                setStep('text-input')
+              }}
             />
           )}
 
@@ -423,11 +427,11 @@ function AnalyzingPreview({
   onFailure: () => void
   onBack: () => void
 }) {
-  // 세션 생성과 달리 preview는 백엔드가 아무것도 저장하지 않는 순수 조회라서
-  // (README: "저장하지 않습니다"), StrictMode가 개발 모드에서 두 번 호출해도 무해합니다.
-  // ref로 막으면 StrictMode의 즉시 정리(cleanup)가 첫 호출의 cancelled만 true로 만들어
-  // 두 번째(생략된) 호출이 결과를 받을 수 없게 되어 화면이 멈추므로, 표준적인
-  // "마지막 호출만 반영" ignore 플래그 패턴을 그대로 씁니다.
+  // preview는 확정(Context)에는 반영되지 않는 초안이라, StrictMode가 개발 모드에서 두 번
+  // 호출해도(초안이 하나 더 생겨 백엔드에 남을 뿐) 화면 동작에는 무해합니다. ref로 막으면
+  // StrictMode의 즉시 정리(cleanup)가 첫 호출의 cancelled만 true로 만들어 두 번째(생략된)
+  // 호출이 결과를 받을 수 없게 되어 화면이 멈추므로, 표준적인 "마지막 호출만 반영" ignore
+  // 플래그 패턴을 그대로 씁니다.
   useEffect(() => {
     let cancelled = false
     previewAnswer(session.session_id, session.patient_token, labels, questionId, questionVersion)

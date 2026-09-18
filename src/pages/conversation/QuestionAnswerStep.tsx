@@ -393,7 +393,7 @@ export default function QuestionAnswerStep({
           onClick={onRequestEnd}
           className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm"
         >
-          대화 중지
+          대화 종료
         </button>
         <button
           onClick={onRestart}

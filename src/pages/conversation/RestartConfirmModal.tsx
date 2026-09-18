@@ -1,13 +1,19 @@
-import { RotateCcw, ShieldAlert, X } from 'lucide-react'
+import { AlertCircle, RotateCcw, ShieldAlert, X } from 'lucide-react'
 
-// "대화 다시 시작"은 세션을 나가지는 않지만, 지금까지 확정된 답변을 전부 지우고
-// 첫 질문 대기 상태로 되돌리는 파괴적인 동작이라 "대화 종료"와 같은 확인 절차를 거칩니다.
+// "대화 다시 시작"은 화면만 초기화하는 게 아니라 실제로 세션을 지우고 새로 발급받는
+// 동작입니다(ConversationPage.confirmRestart 참고 — 백엔드에 세션 안의 답변만 골라
+// 지우는 API가 없어서, 세션째로 교체하는 방식으로 "완전히 지워짐"을 보장합니다).
+// 그래서 이전엔 없던 네트워크 요청이 필요해 submitting/error 상태를 함께 받습니다.
 export default function RestartConfirmModal({
   confirmedCount,
+  submitting,
+  error,
   onConfirmRestart,
   onCancel,
 }: {
   confirmedCount: number
+  submitting?: boolean
+  error?: string | null
   onConfirmRestart: () => void
   onCancel: () => void
 }) {
@@ -44,19 +50,31 @@ export default function RestartConfirmModal({
         <div className="flex items-start gap-2 bg-teal-50 rounded-xl p-3">
           <ShieldAlert size={16} className="text-teal-500 shrink-0 mt-0.5" />
           <p className="text-xs text-teal-700 leading-relaxed">
-            삭제된 내용은 복구할 수 없어요. 대화 세션 자체는 종료되지 않아요.
+            삭제된 내용은 복구할 수 없어요. 화면은 그대로 유지되고, 처음부터 바로 다시 진행할 수 있어요.
           </p>
         </div>
+        {error && (
+          <div className="flex items-start gap-2 bg-red-50 rounded-xl p-3">
+            <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-600 leading-relaxed">{error}</p>
+          </div>
+        )}
         <button
           onClick={onConfirmRestart}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold disabled:opacity-60"
         >
-          <RotateCcw size={16} />
-          대화 다시 시작
+          {submitting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <RotateCcw size={16} />
+          )}
+          {submitting ? '다시 시작하는 중...' : '대화 다시 시작'}
         </button>
         <button
           onClick={onCancel}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500 disabled:opacity-40"
         >
           계속 진행하기
         </button>

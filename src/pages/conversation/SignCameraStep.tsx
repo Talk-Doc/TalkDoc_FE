@@ -5,6 +5,7 @@ import SignJudgeGuide from '../../guide/SignJudgeGuide'
 import { getSignDisplayLabel } from '../../guide/signLabels'
 import { useMediaRecorder, MEDIA_PERMISSION_ERROR } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
+import { useDesktopMode } from '../../context/DesktopModeContext'
 import { postSign } from '../../api/sign'
 import { ApiError } from '../../api/client'
 import LandmarkOverlay from './LandmarkOverlay'
@@ -35,6 +36,7 @@ export default function SignCameraStep({
   onFailure: () => void
 }) {
   const { session_id: sessionId, patient_token: patientToken } = useSession()
+  const { desktopMode } = useDesktopMode()
   const [words, setWords] = useState<string[]>([])
   const [recording, setRecording] = useState(false)
   const [preparing, setPreparing] = useState(false)
@@ -237,14 +239,9 @@ export default function SignCameraStep({
     if (editingIndex === i) setEditingIndex(null)
   }
 
-  return (
-    <>
-      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
-
-      {judgeGuideMode && <SignJudgeGuide completedCount={words.length} />}
-
-      {words.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+  const wordChips = (
+    words.length > 0 && (
+      <div className="flex flex-wrap gap-1.5">
           {words.map((word, i) =>
             editingIndex === i ? (
               <span
@@ -289,9 +286,10 @@ export default function SignCameraStep({
             ),
           )}
         </div>
-      )}
+      )
+  )
 
-      {preparing ? (
+  const statusLine = preparing ? (
         <div className="rounded-2xl bg-amber-50 p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-amber-900">촬영을 준비해주세요.</p>
@@ -326,9 +324,10 @@ export default function SignCameraStep({
           <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block" />
           {words.length > 0 ? '다음 단어를 촬영하거나 답변을 완료하세요.' : '카메라 준비 완료'}
         </div>
-      )}
+      )
 
-      <div className="relative flex-1 min-h-[220px] rounded-2xl bg-slate-800 overflow-hidden flex items-center justify-center">
+  const cameraBox = (
+      <div className={`relative rounded-2xl bg-slate-800 overflow-hidden flex items-center justify-center ${desktopMode ? 'flex-1 min-h-[420px]' : 'flex-1 min-h-[220px]'}`}>
         <div className="absolute inset-3 border-2 border-transparent z-10">
           <span className="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-xl" />
           <span className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-xl" />
@@ -405,15 +404,16 @@ export default function SignCameraStep({
           </p>
         )}
       </div>
+  )
 
-      {error && (
+  const errorBlock = error && (
         <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-600">{error}</p>
         </div>
-      )}
+      )
 
-      {submitting ? (
+  const actionArea = submitting ? (
         <div className="w-full flex items-center justify-center gap-2 py-4 text-teal-600 font-semibold">
           <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
           수어를 분석하고 있어요...
@@ -488,7 +488,45 @@ export default function SignCameraStep({
             </div>
           </div>
         </>
-      )}
+      )
+
+  const header = (
+    <>
+      <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
+      {judgeGuideMode && <SignJudgeGuide completedCount={words.length} />}
+    </>
+  )
+
+  // 모바일/기본 폰 카드에서는 위에서부터 순서대로 쌓아 보여주던 걸 그대로 유지하고,
+  // 데스크톱 체험 모드에서는 카메라가 좁은 세로 카드 안에 갇혀 작아 보이지 않도록
+  // 왼쪽에 큰 카메라, 오른쪽에 나머지 정보(단어 칩·안내·버튼)를 두는 2단 구성으로 바꿉니다.
+  if (desktopMode) {
+    return (
+      <>
+        {header}
+        <div className="grid flex-1 min-h-0 grid-cols-[1.5fr_1fr] gap-6">
+          <div className="flex min-h-0 flex-col gap-3">
+            {statusLine}
+            {cameraBox}
+          </div>
+          <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+            {wordChips}
+            {errorBlock}
+            {actionArea}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {header}
+      {wordChips}
+      {statusLine}
+      {cameraBox}
+      {errorBlock}
+      {actionArea}
     </>
   )
 }

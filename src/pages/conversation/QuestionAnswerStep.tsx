@@ -6,7 +6,7 @@ import UtilityToolbar from './UtilityToolbar'
 import HelpTipBox from './HelpTipBox'
 import { useMediaRecorder } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
-import { postQuestionAudio, updateQuestion } from '../../api/question'
+import { postQuestionAudio, postQuestionText, updateQuestion } from '../../api/question'
 import { ApiError } from '../../api/client'
 import type { QuestionResponse } from '../../api/types'
 import type { QuestionPhase } from '../../types/conversation'
@@ -57,6 +57,11 @@ export default function QuestionAnswerStep({
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  // 마이크를 쓸 수 없거나(소음이 심한 곳 등) 의료진이 타이핑을 더 편해할 수 있어서,
+  // 백엔드가 지원하는 text 등록 방식(오디오 없이 text 폼필드만 보내면 STT를 건너뜀)을
+  // 마이크 화면의 대안으로 함께 보여줍니다.
+  const [textMode, setTextMode] = useState(false)
+  const [questionTextInput, setQuestionTextInput] = useState('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recorder = useMediaRecorder()
 
@@ -83,29 +88,105 @@ export default function QuestionAnswerStep({
     setPhase('mic-recording')
   }
 
+  // 오디오/텍스트 등록 둘 다 성공하면 같은 방식으로 다음 단계를 정합니다: 백엔드가 이미
+  // 선택지형(CARD_SELECT)으로 분류해줬으면 방법 선택 없이 바로 선택지 화면으로 넘어갑니다.
+  const handlePosted = (posted: QuestionResponse) => {
+    setQuestion(posted)
+    if (voiceGuide) speak(posted.text)
+    if (posted.answer_mode === 'CARD_SELECT') {
+      onAnswerWithChoice(posted)
+    } else {
+      setPhase('method-select')
+    }
+  }
+
   const finishRecording = async () => {
     if (timerRef.current) clearInterval(timerRef.current)
     const audioBlob = await recorder.stop()
     setSubmitting(true)
     setError(null)
     try {
-      const question = await postQuestionAudio(sessionId, doctorToken, audioBlob)
-      setQuestion(question)
-      if (voiceGuide) speak(question.text)
-      // 백엔드가 이미 이 질문을 선택지로 답할 수 있는 유형(CARD_SELECT)으로 분류해줬으면,
-      // 굳이 "답변 방법 선택하기"에서 한 번 더 고르게 하지 않고 바로 선택지 화면으로 넘어갑니다.
-      // 수어/텍스트로 바꾸고 싶으면 선택지 화면에서 뒤로가기로 여기(방법 선택)에 돌아올 수 있어요.
-      if (question.answer_mode === 'CARD_SELECT') {
-        onAnswerWithChoice(question)
-      } else {
-        setPhase('method-select')
-      }
+      handlePosted(await postQuestionAudio(sessionId, doctorToken, audioBlob))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
       setPhase('mic-waiting')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const submitQuestionText = async () => {
+    const text = questionTextInput.trim()
+    if (!text) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      handlePosted(await postQuestionText(sessionId, doctorToken, text))
+      setQuestionTextInput('')
+      setTextMode(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : '질문을 처리하지 못했어요. 다시 시도해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (phase !== 'method-select' && textMode) {
+    return (
+      <>
+        <img src={doctorSolo} alt="" className="w-40 mx-auto" />
+
+        <div className="text-center">
+          <p className="text-lg font-bold text-slate-900 leading-relaxed mb-1">
+            의료진이 질문을 텍스트로
+            <br />
+            입력해주세요
+          </p>
+          <p className="text-xs text-slate-400">마이크 대신 텍스트로 질문을 등록할 수 있어요.</p>
+        </div>
+
+        <textarea
+          value={questionTextInput}
+          onChange={(e) => setQuestionTextInput(e.target.value)}
+          autoFocus
+          rows={3}
+          disabled={submitting}
+          placeholder="예: 어디가 아파서 오셨어요?"
+          className="flex-1 rounded-xl border border-slate-200 p-3 text-slate-900 resize-none disabled:opacity-60"
+        />
+
+        {error && (
+          <div role="alert" className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        <button
+          disabled={submitting || questionTextInput.trim().length === 0}
+          onClick={submitQuestionText}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold disabled:bg-slate-200 disabled:text-slate-400"
+        >
+          {submitting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Check size={16} />
+          )}
+          질문 등록하기
+        </button>
+        <button
+          onClick={() => {
+            setTextMode(false)
+            setError(null)
+          }}
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl border border-slate-200 text-slate-500 font-medium disabled:opacity-40"
+        >
+          <Mic size={16} />
+          마이크로 질문하기
+        </button>
+      </>
+    )
   }
 
   if (phase !== 'method-select') {
@@ -171,7 +252,7 @@ export default function QuestionAnswerStep({
         </div>
 
         {error ? (
-          <div className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
+          <div role="alert" className="rounded-2xl bg-red-50 p-3.5 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-600">{error}</p>
           </div>
@@ -180,6 +261,16 @@ export default function QuestionAnswerStep({
             title={recording ? '질문을 이해하기 어려우신가요?' : '의료진의 버튼을 누르고 음성으로 질문합니다.'}
             body={recording ? '질문을 이해하기 쉽게 도와드려요.' : '수집된 음성은 텍스트로 변환됩니다.'}
           />
+        )}
+
+        {!recording && !submitting && (
+          <button
+            onClick={() => setTextMode(true)}
+            className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-400"
+          >
+            <Keyboard size={13} />
+            마이크 대신 텍스트로 질문 입력하기
+          </button>
         )}
       </>
     )
@@ -302,7 +393,7 @@ export default function QuestionAnswerStep({
           onClick={onRequestEnd}
           className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm"
         >
-          대화 중지
+          대화 종료
         </button>
         <button
           onClick={onRestart}

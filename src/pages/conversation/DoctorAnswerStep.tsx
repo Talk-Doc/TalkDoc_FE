@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Volume2, Pencil, Check, X, Mic } from 'lucide-react'
+import { Send, Volume2, Pencil, Check, X, Mic, CaseSensitive, CircleDashed } from 'lucide-react'
 import doctorSolo from '../../assets/illustrations/doctor-solo.png'
 import HelpTipBox from './HelpTipBox'
 import type { QuestionRecord } from '../../types/conversation'
 import { useSession } from '../../context/SessionContext'
+import { useAccessibility } from '../../context/AccessibilityContext'
 import { getAnswerTts } from '../../api/answer'
 import { playAudioBlob } from '../../utils/audio'
 import { speak } from '../../utils/speech'
@@ -33,6 +34,7 @@ export default function DoctorAnswerStep({
   onEditAnswer: (answerId: string, newText: string) => Promise<void>
 }) {
   const { session_id: sessionId, doctor_token: doctorToken } = useSession()
+  const { largeText, highContrast, toggleLargeText, toggleHighContrast } = useAccessibility()
   const lastRecord = history[history.length - 1]
   const lastAnswer = lastRecord?.patientAnswerText ?? ''
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -167,7 +169,7 @@ export default function DoctorAnswerStep({
           onClick={onRequestEnd}
           className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm"
         >
-          대화 중지
+          대화 종료
         </button>
         <button
           onClick={onRestart}
@@ -177,16 +179,38 @@ export default function DoctorAnswerStep({
         </button>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-400">
-        <span>더 편하게 이용하고 싶다면 아래 기능을 활용해보세요.</span>
-        <button
-          onClick={() => lastRecord && playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)}
-          disabled={!lastRecord}
-          aria-label="전달된 답변 다시 듣기"
-          className="shrink-0 disabled:opacity-40"
-        >
-          <Volume2 size={13} />
-        </button>
+      <div>
+        <p className="text-xs font-semibold text-slate-400 mb-2">더 편하게 이용하기</p>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => lastRecord && playAnswer(sessionId, doctorToken, lastRecord.id, lastAnswer)}
+            disabled={!lastRecord}
+            className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 text-slate-600 text-[11px] font-medium disabled:opacity-40"
+          >
+            <Volume2 size={17} />
+            답변 다시 듣기
+          </button>
+          <button
+            onClick={toggleLargeText}
+            aria-pressed={largeText}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-[11px] font-medium ${
+              largeText ? 'bg-teal-700 text-white' : 'bg-slate-50 text-slate-600'
+            }`}
+          >
+            <CaseSensitive size={17} />
+            글자 크게 보기
+          </button>
+          <button
+            onClick={toggleHighContrast}
+            aria-pressed={highContrast}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-[11px] font-medium ${
+              highContrast ? 'bg-teal-700 text-white' : 'bg-slate-50 text-slate-600'
+            }`}
+          >
+            <CircleDashed size={17} />
+            고대비 모드
+          </button>
+        </div>
       </div>
     </>
   )

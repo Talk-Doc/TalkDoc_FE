@@ -6,23 +6,26 @@ import JudgeCompletePage from './guide/JudgeCompletePage'
 import ConversationPage from './pages/ConversationPage'
 import EndCompletePage from './pages/EndCompletePage'
 import { AccessibilityProvider } from './context/AccessibilityContext'
+import { DesktopModeProvider } from './context/DesktopModeContext'
 
 // 라우터 = "주소(URL)마다 어떤 화면을 보여줄지" 정하는 표입니다.
 // 화면이 늘어나도 이 파일에 한 줄씩만 추가하면 됩니다.
 function App() {
   return (
-    <AccessibilityProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/ready" element={<ReadyPage />} />
-          <Route path="/guide" element={<JudgeGuidePage />} />
-          <Route path="/guide/complete" element={<JudgeCompletePage />} />
-          <Route path="/conversation" element={<ConversationPage />} />
-          <Route path="/end" element={<EndCompletePage />} />
-        </Routes>
-      </BrowserRouter>
-    </AccessibilityProvider>
+    <DesktopModeProvider>
+      <AccessibilityProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/ready" element={<ReadyPage />} />
+            <Route path="/guide" element={<JudgeGuidePage />} />
+            <Route path="/guide/complete" element={<JudgeCompletePage />} />
+            <Route path="/conversation" element={<ConversationPage />} />
+            <Route path="/end" element={<EndCompletePage />} />
+          </Routes>
+        </BrowserRouter>
+      </AccessibilityProvider>
+    </DesktopModeProvider>
   )
 }
 

@@ -328,7 +328,7 @@ export default function SignCameraStep({
         </div>
       )}
 
-      <div className="relative flex-1 min-h-[220px] md:min-h-[280px] lg:min-h-[340px] xl:min-h-[400px] rounded-2xl bg-slate-800 overflow-hidden flex items-center justify-center">
+      <div className="relative flex-1 min-h-[220px] rounded-2xl bg-slate-800 overflow-hidden flex items-center justify-center">
         <div className="absolute inset-3 border-2 border-transparent z-10">
           <span className="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-xl" />
           <span className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-xl" />

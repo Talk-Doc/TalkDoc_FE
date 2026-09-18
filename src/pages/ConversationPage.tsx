@@ -378,6 +378,10 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
                 setAnswerSource('text-input')
                 setStep('text-input')
               }}
+              onSwitchToSign={() => {
+                setAnswerSource('sign-camera')
+                setStep('sign-camera')
+              }}
             />
           )}
 

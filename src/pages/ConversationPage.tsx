@@ -113,6 +113,12 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [delivering, setDelivering] = useState(false)
   const [deliverError, setDeliverError] = useState<string | null>(null)
+  // QuestionAnswerStep은 자기 phase/question을 useState(initialPhase/initialQuestion)로
+  // "마운트 시점에만" 초기화합니다. 방법 선택 화면(step==='question')에 머문 채로 재시작하면
+  // step이 안 바뀌어서 리마운트가 안 되고, 부모가 questionPhase/question을 리셋해도 자식의
+  // 오래된 내부 state가 그대로 남아 화면이 안 바뀌는 버그가 있었습니다. key를 바꿔 강제로
+  // 리마운트시켜서 고칩니다.
+  const [restartKey, setRestartKey] = useState(0)
 
   const resetForNextQuestion = () => {
     setQuestion(null)
@@ -131,6 +137,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
     setHistory([])
     resetForNextQuestion()
     setShowRestartConfirm(false)
+    setRestartKey((k) => k + 1)
   }
 
   // 답변 방법 선택 화면으로 되돌아갑니다 (질문 텍스트는 그대로 유지).
@@ -274,6 +281,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
         >
           {step === 'question' && (
             <QuestionAnswerStep
+              key={restartKey}
               initialPhase={questionPhase}
               initialQuestion={question}
               onPhaseChange={setQuestionPhase}

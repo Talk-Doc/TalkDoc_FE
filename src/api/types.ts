@@ -9,6 +9,7 @@ export type Intent =
   | 'SEVERITY'
   | 'FREQUENCY'
   | 'YES_NO'
+  | 'CHOICE'
   | 'OTHER'
 
 export type AnswerMode = 'SIGN_REQUIRED' | 'CARD_SELECT'

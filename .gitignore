@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 한국수어사전 원본 가이드 영상은 로컬/배포 환경에 별도로 배치합니다.
+# CC BY-NC-ND 조건상 저장소에서는 재배포하지 않습니다.
+src/guide/*.webm
+
 # Local Redis dump from running the backend for dev/testing
 dump.rdb
 

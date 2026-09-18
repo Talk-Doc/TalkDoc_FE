@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import PhoneScreen from '../components/PhoneScreen'
 import TalkDacLogo from '../components/TalkDacLogo'
 import ConversationScreenShell from './conversation/ConversationScreenShell'
@@ -95,6 +95,8 @@ export default function ConversationPage() {
 
 function ConversationFlow({ session }: { session: SessionInfo }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const judgeGuideMode = searchParams.get('mode') === 'judge'
   const [step, setStep] = useState<ConversationStep>('question')
   const [questionPhase, setQuestionPhase] = useState<QuestionPhase>('mic-waiting')
   const [question, setQuestion] = useState<QuestionResponse | null>(null)
@@ -159,7 +161,18 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
           patientAnswerText: conversation.answer,
         },
       ])
-      setStep('doctor-answer')
+      if (judgeGuideMode) {
+        navigate('/guide/complete', {
+          replace: true,
+          state: {
+            answer: conversation.answer,
+            sessionId: session.session_id,
+            doctorToken: session.doctor_token,
+          },
+        })
+      } else {
+        setStep('doctor-answer')
+      }
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DRAFT_INVALIDATED') {
         setDraftInvalidated(true)
@@ -288,6 +301,7 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
             <SignCameraStep
               questionText={questionText}
               time={questionTime}
+              judgeGuideMode={judgeGuideMode}
               onSuccess={(labels) => {
                 setAnswerLabels(labels)
                 setStep('analyzing')

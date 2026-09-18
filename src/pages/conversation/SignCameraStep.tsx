@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Square, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil, RotateCcw } from 'lucide-react'
+import { Camera, Sun, Hand, User, Lightbulb, AlertCircle, Check, X, Pencil, RotateCcw, Timer } from 'lucide-react'
 import QuestionCard from './QuestionCard'
+import SignJudgeGuide from '../../guide/SignJudgeGuide'
+import { getSignDisplayLabel } from '../../guide/signLabels'
 import { useMediaRecorder, MEDIA_PERMISSION_ERROR } from '../../hooks/useMediaRecorder'
 import { useSession } from '../../context/SessionContext'
 import { postSign } from '../../api/sign'
 import { ApiError } from '../../api/client'
+import LandmarkOverlay from './LandmarkOverlay'
+import cameraAlignmentGuide from '../../assets/guides/camera-alignment-guide.svg'
 
 // TalkDoc-VisionAI는 영상 1개당 단어 1개만 인식합니다. 그래서 이 화면은 촬영을 여러 번 반복해
 // 인식된 단어들을 클라이언트에서 모아두고, 환자가 [답변 완료하기]를 누르면 그 단어 목록으로
@@ -14,24 +18,32 @@ const RETRY_MESSAGE: Record<string, string> = {
   INSUFFICIENT_LANDMARKS: '양손과 상반신이 화면에 보이지 않아요. 손과 상반신이 모두 보이도록 다시 촬영해주세요.',
 }
 
+const AUTO_RECORDING_SECONDS = 3
+const PREPARATION_SECONDS = 3
+
 export default function SignCameraStep({
   questionText,
   time,
+  judgeGuideMode = false,
   onSuccess,
   onFailure,
 }: {
   questionText: string
   time?: string
+  judgeGuideMode?: boolean
   onSuccess: (labels: string[]) => void
   onFailure: () => void
 }) {
   const { session_id: sessionId, patient_token: patientToken } = useSession()
   const [words, setWords] = useState<string[]>([])
   const [recording, setRecording] = useState(false)
+  const [preparing, setPreparing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [recordingSecondsLeft, setRecordingSecondsLeft] = useState(0)
+  const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(0)
   // 스트림은 받았는데(카메라 권한/장치 자체는 정상) 실제 화면에 프레임이 안 들어오는 경우가 있습니다
   // (다른 탭/앱이 카메라를 이미 쓰고 있거나, 드라이버 문제 등). 이럴 땐 <video>가 깨진 아이콘만
   // 보여주고 조용히 멈춰버리는데, 사용자가 원인을 알 수 없으니 일정 시간 안에 첫 프레임이
@@ -40,6 +52,22 @@ export default function SignCameraStep({
   const recorder = useMediaRecorder()
   const videoRef = useRef<HTMLVideoElement>(null)
   const startedAtRef = useRef(0)
+  const autoStopTimerRef = useRef<number | null>(null)
+  const countdownTimerRef = useRef<number | null>(null)
+  const preparationTimerRef = useRef<number | null>(null)
+  const preparationStartTimerRef = useRef<number | null>(null)
+  const stoppingRef = useRef(false)
+
+  const clearRecordingTimers = () => {
+    if (autoStopTimerRef.current !== null) window.clearTimeout(autoStopTimerRef.current)
+    if (countdownTimerRef.current !== null) window.clearInterval(countdownTimerRef.current)
+    if (preparationTimerRef.current !== null) window.clearInterval(preparationTimerRef.current)
+    if (preparationStartTimerRef.current !== null) window.clearTimeout(preparationStartTimerRef.current)
+    autoStopTimerRef.current = null
+    countdownTimerRef.current = null
+    preparationTimerRef.current = null
+    preparationStartTimerRef.current = null
+  }
 
   useEffect(() => {
     const video = videoRef.current
@@ -77,7 +105,7 @@ export default function SignCameraStep({
   // words/recording/submitting에도 의존해서, 촬영 중이 아닐 때 미리보기가 (기기 문제 등으로)
   // 꺼져 있으면 자동으로 다시 켭니다 — 한 번 깨지면 계속 빈 화면으로 남지 않도록 하기 위함입니다.
   useEffect(() => {
-    if (recorder.stream || recording || submitting) return
+    if (recorder.stream || preparing || recording || submitting) return
     let cancelled = false
     recorder.startPreview({ video: { facingMode: 'user' }, audio: false }).then((ok) => {
       if (cancelled) return
@@ -87,11 +115,14 @@ export default function SignCameraStep({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recorder.stream, recording, submitting])
+  }, [recorder.stream, preparing, recording, submitting])
 
   // 화면을 완전히 떠날 때만 카메라를 실제로 끕니다.
   useEffect(() => {
-    return () => recorder.stopPreview()
+    return () => {
+      clearRecordingTimers()
+      recorder.stopPreview()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -107,18 +138,57 @@ export default function SignCameraStep({
     recorder.stopPreview()
   }
 
-  const startRecording = async () => {
-    setError(null)
+  const beginRecording = async () => {
     const ok = await recorder.start({ video: { facingMode: 'user' }, audio: false })
+    setPreparing(false)
+    setPreparationSecondsLeft(0)
     if (!ok) {
       setError(MEDIA_PERMISSION_ERROR)
       return
     }
     startedAtRef.current = Date.now()
+    stoppingRef.current = false
+    setRecordingSecondsLeft(AUTO_RECORDING_SECONDS)
     setRecording(true)
+
+    const deadline = Date.now() + AUTO_RECORDING_SECONDS * 1000
+    countdownTimerRef.current = window.setInterval(() => {
+      setRecordingSecondsLeft(Math.max(1, Math.ceil((deadline - Date.now()) / 1000)))
+    }, 200)
+    autoStopTimerRef.current = window.setTimeout(() => {
+      void stopRecording()
+    }, AUTO_RECORDING_SECONDS * 1000)
+  }
+
+  const startRecording = () => {
+    if (preparing || recording || submitting) return
+    setError(null)
+
+    // 실제 MediaRecorder는 준비 카운트다운이 끝난 다음에만 시작됩니다.
+    if (!recorder.stream) {
+      setError('카메라가 준비 중이에요. 잠시 후 다시 눌러주세요.')
+      return
+    }
+
+    setPreparing(true)
+    setPreparationSecondsLeft(PREPARATION_SECONDS)
+    const deadline = Date.now() + PREPARATION_SECONDS * 1000
+    preparationTimerRef.current = window.setInterval(() => {
+      setPreparationSecondsLeft(Math.max(1, Math.ceil((deadline - Date.now()) / 1000)))
+    }, 200)
+    preparationStartTimerRef.current = window.setTimeout(() => {
+      if (preparationTimerRef.current !== null) window.clearInterval(preparationTimerRef.current)
+      preparationTimerRef.current = null
+      preparationStartTimerRef.current = null
+      void beginRecording()
+    }, PREPARATION_SECONDS * 1000)
   }
 
   const stopRecording = async () => {
+    if (stoppingRef.current) return
+    stoppingRef.current = true
+    clearRecordingTimers()
+    setRecordingSecondsLeft(0)
     const duration = (Date.now() - startedAtRef.current) / 1000
     const videoBlob = await recorder.stop()
     setRecording(false)
@@ -138,6 +208,7 @@ export default function SignCameraStep({
       setError(err instanceof ApiError ? err.message : '수어 인식에 실패했어요. 다시 시도해주세요.')
     } finally {
       setSubmitting(false)
+      stoppingRef.current = false
     }
   }
 
@@ -169,6 +240,8 @@ export default function SignCameraStep({
   return (
     <>
       <QuestionCard questionText={questionText} guideText="증상을 설명해주세요." time={time} />
+
+      {judgeGuideMode && <SignJudgeGuide completedCount={words.length} />}
 
       {words.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -202,7 +275,7 @@ export default function SignCameraStep({
                 className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 pl-2.5 pr-1 py-1 text-xs font-semibold text-teal-700"
               >
                 <button onClick={() => startEditWord(i)} className="inline-flex items-center gap-1">
-                  {word}
+                  {getSignDisplayLabel(word)}
                   <Pencil size={10} className="text-teal-400" />
                 </button>
                 <button
@@ -218,12 +291,24 @@ export default function SignCameraStep({
         </div>
       )}
 
-      {recording ? (
+      {preparing ? (
+        <div className="rounded-2xl bg-amber-50 p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-amber-900">촬영을 준비해주세요.</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {preparationSecondsLeft}초 뒤 촬영을 시작하고, {AUTO_RECORDING_SECONDS}초 동안 자동 촬영해요.
+            </p>
+          </div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-base font-bold text-white">
+            {preparationSecondsLeft}
+          </span>
+        </div>
+      ) : recording ? (
         <div className="rounded-2xl bg-teal-50 p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-teal-900">지금 수어로 한 단어를 답변해주세요.</p>
+            <p className="text-sm font-bold text-teal-900">안내 영상의 동작을 따라 해주세요.</p>
             <p className="text-xs text-teal-600 mt-0.5">
-              한 동작을 하고 정지한 뒤, 촬영을 마치면 단어가 인식돼요.
+              촬영은 {AUTO_RECORDING_SECONDS}초 뒤 자동으로 끝나고 바로 분석돼요.
             </p>
           </div>
           <span className="relative w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
@@ -249,13 +334,29 @@ export default function SignCameraStep({
           <span className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-xl" />
         </div>
         {recorder.stream ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover -scale-x-100"
-          />
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover -scale-x-100"
+            />
+            {!recording && !submitting && (
+              <img
+                src={cameraAlignmentGuide}
+                alt=""
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-0 z-[4] h-full w-full object-cover transition-opacity ${
+                  preparing ? 'opacity-70' : 'opacity-55'
+                }`}
+              />
+            )}
+            <LandmarkOverlay
+              videoRef={videoRef}
+              enabled={!previewBroken}
+            />
+          </>
         ) : (
           <User size={72} className="text-slate-500" strokeWidth={1} />
         )}
@@ -276,9 +377,18 @@ export default function SignCameraStep({
             </button>
           </div>
         )}
-        {recording ? (
+        {preparing ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/15">
+            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-black/55 text-4xl font-bold text-white backdrop-blur-sm">
+              {preparationSecondsLeft}
+            </span>
+            <p className="mt-3 rounded-full bg-black/45 px-3 py-1 text-xs font-medium text-white">
+              자세를 잡고 동작을 준비해주세요
+            </p>
+          </div>
+        ) : recording ? (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">
-            <p className="text-xs text-white/80">수어를 인식하고 있어요...</p>
+            <p className="text-xs text-white/90">촬영 종료까지 {recordingSecondsLeft}초</p>
             <div className="flex items-end gap-[3px] h-4">
               {[4, 9, 6, 12, 5, 10, 7, 4].map((h, i) => (
                 <span
@@ -290,8 +400,8 @@ export default function SignCameraStep({
             </div>
           </div>
         ) : (
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/30 rounded-full px-3 py-1 z-10">
-            양손과 상반신이 모두 보이도록 해주세요.
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/90 bg-black/40 rounded-full px-3 py-1 z-10 whitespace-nowrap">
+            가이드 선에 머리·어깨·양손을 맞춰주세요.
           </p>
         )}
       </div>
@@ -308,6 +418,11 @@ export default function SignCameraStep({
           <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
           수어를 분석하고 있어요...
         </div>
+      ) : preparing ? (
+        <div className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-800 font-semibold">
+          <Timer size={16} />
+          {preparationSecondsLeft}초 후 촬영을 시작해요
+        </div>
       ) : recording ? (
         <>
           <div className="rounded-2xl bg-slate-50 p-3.5 flex items-start gap-2.5">
@@ -321,29 +436,37 @@ export default function SignCameraStep({
               </ul>
             </div>
           </div>
-          <button
-            onClick={stopRecording}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-teal-500 text-teal-600 font-semibold"
-          >
-            <Square size={16} fill="currentColor" />
-            답변 중지하기
-          </button>
+          <div className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-teal-200 bg-teal-50 text-teal-700 font-semibold">
+            <Timer size={16} />
+            {recordingSecondsLeft}초 후 자동으로 분석해요
+          </div>
         </>
       ) : (
         <>
           <button
             onClick={startRecording}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold"
+            disabled={!recorder.stream || previewBroken}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-teal-700 text-white font-semibold disabled:bg-slate-200 disabled:text-slate-400"
           >
             <Camera size={16} />
-            {words.length > 0 ? '다음 단어 촬영하기' : '답변 촬영 시작하기'}
+            {!recorder.stream
+              ? '카메라 준비 중...'
+              : judgeGuideMode
+              ? words.length === 0
+                ? '1단어 ‘머리’ 촬영하기'
+                : words.length === 1
+                  ? '2단어 ‘아파요’ 촬영하기'
+                  : '다른 단어 추가 촬영하기'
+              : words.length > 0
+                ? '다음 단어 촬영하기'
+                : '답변 촬영 시작하기'}
           </button>
           {words.length > 0 && (
             <button
               onClick={finishAnswer}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-teal-500 text-teal-700 font-semibold"
             >
-              답변 완료하기
+              {judgeGuideMode && words.length >= 2 ? '가이드 답변 확인하기' : '답변 완료하기'}
             </button>
           )}
           <div>

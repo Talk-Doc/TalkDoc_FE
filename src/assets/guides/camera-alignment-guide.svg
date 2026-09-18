@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 480" fill="none">
+  <g stroke="#CCFBF1" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="360" cy="100" rx="44" ry="54" stroke-width="4" stroke-dasharray="9 9" opacity=".72"/>
+
+    <path d="M282 174 Q360 163 438 174" stroke-width="5" opacity=".78"/>
+    <path d="M282 174 L310 405 M438 174 L410 405 M310 405 Q360 417 410 405" stroke-width="4" stroke-dasharray="10 8" opacity=".62"/>
+
+    <path d="M282 174 Q250 235 231 310 Q248 359 290 394" stroke-width="6" opacity=".75"/>
+    <path d="M438 174 Q470 235 489 310 Q472 359 430 394" stroke-width="6" opacity=".75"/>
+
+    <circle cx="282" cy="174" r="7" fill="#5EEAD4" fill-opacity=".3" stroke-width="3"/>
+    <circle cx="438" cy="174" r="7" fill="#5EEAD4" fill-opacity=".3" stroke-width="3"/>
+    <circle cx="231" cy="310" r="7" fill="#5EEAD4" fill-opacity=".3" stroke-width="3"/>
+    <circle cx="489" cy="310" r="7" fill="#5EEAD4" fill-opacity=".3" stroke-width="3"/>
+
+    <rect x="256" y="370" width="70" height="90" rx="31" stroke-width="4" stroke-dasharray="7 7" opacity=".78"/>
+    <rect x="394" y="370" width="70" height="90" rx="31" stroke-width="4" stroke-dasharray="7 7" opacity=".78"/>
+  </g>
+
+  <g fill="#CCFBF1" opacity=".72">
+    <circle cx="277" cy="398" r="4"/><circle cx="288" cy="392" r="4"/><circle cx="300" cy="392" r="4"/><circle cx="311" cy="398" r="4"/>
+    <circle cx="409" cy="398" r="4"/><circle cx="420" cy="392" r="4"/><circle cx="432" cy="392" r="4"/><circle cx="443" cy="398" r="4"/>
+  </g>
+</svg>

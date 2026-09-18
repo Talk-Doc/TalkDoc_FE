@@ -88,12 +88,20 @@ export default function ConversationPage() {
 
   return (
     <SessionProvider value={session}>
-      <ConversationFlow session={session} />
+      <ConversationFlow session={session} onSessionReplaced={setSession} />
     </SessionProvider>
   )
 }
 
-function ConversationFlow({ session }: { session: SessionInfo }) {
+function ConversationFlow({
+  session,
+  onSessionReplaced,
+}: {
+  session: SessionInfo
+  // "대화 다시 시작"이 실제로 세션을 지우고 새로 발급받았을 때, 상위(ConversationPage)의
+  // session state를 교체해서 SessionContext까지 갱신하기 위한 콜백입니다.
+  onSessionReplaced: (session: SessionInfo) => void
+}) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const judgeGuideMode = searchParams.get('mode') === 'judge'
@@ -111,6 +119,8 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
   const [history, setHistory] = useState<QuestionRecord[]>([])
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
+  const [restarting, setRestarting] = useState(false)
+  const [restartError, setRestartError] = useState<string | null>(null)
   const [delivering, setDelivering] = useState(false)
   const [deliverError, setDeliverError] = useState<string | null>(null)
   // QuestionAnswerStep은 자기 phase/question을 useState(initialPhase/initialQuestion)로
@@ -131,13 +141,35 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
     setStep('question')
   }
 
-  // "대화 다시 시작" 확정: 지금까지 확정된 답변 기록까지 전부 지우고 첫 질문 대기 상태로 되돌립니다.
-  // 세션을 나가는 건 아니라서(/end로 이동하지 않음) "대화 종료"와는 다릅니다.
-  const confirmRestart = () => {
-    setHistory([])
-    resetForNextQuestion()
-    setShowRestartConfirm(false)
-    setRestartKey((k) => k + 1)
+  // "대화 다시 시작" 확정: 화면 상태만 지우는 게 아니라 실제로 세션을 통째로 교체합니다.
+  // 백엔드엔 세션 안의 확정된 답변만 골라서 지우는 API가 없어서(ConversationRepository엔
+  // append/조회만 있고 delete가 없음), 화면만 초기화하면 이전에 확정한 답변이 세션에 그대로
+  // 남아있다가 "대화 종료" 시 진료 요약에 다시 포함되는 문제가 있었습니다(백엔드팀 확인:
+  // 기존 세션을 지우고 새 세션을 받아서 쓰라고 안내받음). 그래서 여기서 기존 세션을 삭제하고
+  // 새 세션을 발급받아 SessionContext를 통째로 교체합니다.
+  // "대화 종료"와 다른 점은 /end로 이동하지 않고 같은 화면(첫 질문 대기)에 머무른다는 것뿐입니다.
+  const confirmRestart = async () => {
+    setRestarting(true)
+    setRestartError(null)
+    try {
+      try {
+        await deleteSession(session.session_id, session.doctor_token)
+      } catch {
+        // 이미 만료/삭제된 세션이어도 새 세션은 그대로 발급받아 진행합니다.
+      }
+      const fresh = await createSession()
+      onSessionReplaced(fresh)
+      setHistory([])
+      resetForNextQuestion()
+      setShowRestartConfirm(false)
+      setRestartKey((k) => k + 1)
+    } catch (err) {
+      setRestartError(
+        err instanceof ApiError ? err.message : '다시 시작하지 못했어요. 다시 시도해주세요.',
+      )
+    } finally {
+      setRestarting(false)
+    }
   }
 
   // 답변 방법 선택 화면으로 되돌아갑니다 (질문 텍스트는 그대로 유지).
@@ -403,8 +435,13 @@ function ConversationFlow({ session }: { session: SessionInfo }) {
         {showRestartConfirm && (
           <RestartConfirmModal
             confirmedCount={history.length}
+            submitting={restarting}
+            error={restartError}
             onConfirmRestart={confirmRestart}
-            onCancel={() => setShowRestartConfirm(false)}
+            onCancel={() => {
+              setShowRestartConfirm(false)
+              setRestartError(null)
+            }}
           />
         )}
       </div>

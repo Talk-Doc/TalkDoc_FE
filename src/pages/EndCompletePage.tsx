@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Check, Sparkle, Trash2, Home, FileText } from 'lucide-react'
 import PhoneScreen from '../components/PhoneScreen'
+import TalkDacLogo from '../components/TalkDacLogo'
 import { useDesktopMode } from '../context/DesktopModeContext'
 
 function EndIcon({ size }: { size: number }) {
@@ -32,6 +33,10 @@ export default function EndCompletePage() {
   if (desktopMode) {
     return (
       <PhoneScreen wide>
+        <div className="flex items-center mb-2">
+          <TalkDacLogo size="sm" />
+        </div>
+
         <div className="flex-1 grid grid-cols-2 items-center gap-12 max-w-4xl mx-auto w-full">
           <div className="flex justify-center">
             <EndIcon size={224} />
@@ -73,6 +78,10 @@ export default function EndCompletePage() {
 
   return (
     <PhoneScreen>
+      <div className="flex items-center mb-2">
+        <TalkDacLogo size="sm" />
+      </div>
+
       <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 overflow-y-auto">
         <EndIcon size={144} />
         <p className="text-lg font-bold text-slate-900 shrink-0">대화가 종료되었습니다.</p>

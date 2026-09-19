@@ -33,7 +33,7 @@ export default function JudgeCompletePage() {
   if (desktopMode) {
     return (
       <PhoneScreen wide>
-        <header className="mb-4 flex items-center justify-center">
+        <header className="mb-4 flex items-center">
           <TalkDacLogo size="sm" />
         </header>
 

@@ -497,28 +497,9 @@ export default function SignCameraStep({
     </>
   )
 
-  // 모바일/기본 폰 카드에서는 위에서부터 순서대로 쌓아 보여주던 걸 그대로 유지하고,
-  // 데스크톱 체험 모드에서는 카메라가 좁은 세로 카드 안에 갇혀 작아 보이지 않도록
-  // 왼쪽에 큰 카메라, 오른쪽에 나머지 정보(단어 칩·안내·버튼)를 두는 2단 구성으로 바꿉니다.
-  if (desktopMode) {
-    return (
-      <>
-        {header}
-        <div className="grid flex-1 min-h-0 grid-cols-[1.5fr_1fr] gap-6">
-          <div className="flex min-h-0 flex-col gap-3">
-            {statusLine}
-            {cameraBox}
-          </div>
-          <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
-            {wordChips}
-            {errorBlock}
-            {actionArea}
-          </div>
-        </div>
-      </>
-    )
-  }
-
+  // 모바일과 같은 순서로 위에서부터 쌓아 보여줍니다(가운데 정렬된 한 컬럼).
+  // 데스크톱 체험 모드에서는 cameraBox의 min-height만 키워서(위에서 420px로 분기)
+  // 카메라가 작아 보이지 않게 하고, 레이아웃 자체는 좌우로 나누지 않습니다.
   return (
     <>
       {header}

@@ -8,28 +8,26 @@ import { useDesktopMode } from '../../context/DesktopModeContext'
 // 화면마다 달라지는 내용(카드들)은 children으로 받습니다.
 // onBack이 주어지면 로고 자리에 "이전 단계로" 화살표를 함께 보여줍니다(없으면 더 되돌아갈 곳이 없는 화면).
 //
-// desktopFullWidth: 카메라 촬영처럼 내용 스스로 넓은 공간을 2단 등으로 활용하는 화면만
-// true로 넘겨서 카드 폭을 그대로 씁니다. 그 외(텍스트/버튼 위주) 화면은 데스크톱 모드에서도
-// 너무 넓어지면 버튼만 어색하게 늘어나므로 적당한 폭으로 가운데 정렬합니다.
+// 데스크톱 모드에서는 헤더·스테퍼·본문을 전부 같은 폭(max-w-2xl)으로 가운데 정렬합니다.
+// 헤더/스테퍼만 카드 폭 그대로 두면 옆으로 하얗게 늘어난 것처럼 보여서, 본문과 같은 컬럼에
+// 맞춥니다.
 export default function ConversationScreenShell({
   activeIndex,
   phaseLabel,
   onRequestEnd,
   onBack,
-  desktopFullWidth = false,
   children,
 }: {
   activeIndex: number
   phaseLabel?: string
   onRequestEnd: () => void
   onBack?: () => void
-  desktopFullWidth?: boolean
   children: ReactNode
 }) {
   const { desktopMode } = useDesktopMode()
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className={`flex-1 flex flex-col ${desktopMode ? 'w-full max-w-2xl mx-auto' : ''}`}>
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           {onBack && (
@@ -54,13 +52,7 @@ export default function ConversationScreenShell({
 
       <ConversationStepper activeIndex={activeIndex} phaseLabel={phaseLabel} />
 
-      <div
-        className={`flex-1 flex flex-col gap-4 ${
-          desktopMode && !desktopFullWidth ? 'w-full max-w-2xl mx-auto' : ''
-        }`}
-      >
-        {children}
-      </div>
+      <div className="flex-1 flex flex-col gap-4">{children}</div>
     </div>
   )
 }

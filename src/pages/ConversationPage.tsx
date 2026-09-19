@@ -290,7 +290,6 @@ function ConversationFlow({
         <ConversationScreenShell
           activeIndex={activeIndex}
           phaseLabel={phaseLabel}
-          desktopFullWidth={step === 'sign-camera'}
           onRequestEnd={() => setShowEndConfirm(true)}
           onBack={(() => {
             switch (step) {
